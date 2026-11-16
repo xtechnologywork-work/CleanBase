@@ -1,0 +1,88 @@
+/* Auth screens (login, register, locked). Same grammar as the landing page. */
+
+.auth {
+  min-height: 100vh;
+  background: var(--color-bg-body);
+  display: flex;
+  flex-direction: column;
+}
+.auth-top { padding: 24px clamp(20px, 4vw, 48px); }
+.auth-top a { color: var(--color-text-primary); display: inline-flex; }
+.auth-main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 8px 20px 72px; }
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  background: #fff;
+  border-radius: 22px;
+  padding: clamp(28px, 5vw, 44px);
+}
+.auth-card h1 {
+  font-size: clamp(28px, 4vw, 34px);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+}
+.auth-sub { margin-top: 10px; font-size: 17px; line-height: 1.47; letter-spacing: -0.014em; color: var(--color-text-secondary); }
+.auth-form { margin-top: 28px; display: flex; flex-direction: column; gap: 16px; }
+.auth-field { display: flex; flex-direction: column; gap: 6px; }
+.auth-field label { font-size: 14px; font-weight: 600; color: var(--color-text-primary); }
+.auth-input { position: relative; }
+.auth-input svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--color-text-tertiary); pointer-events: none; }
+.auth-input input, .auth-input select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 16px 0 44px;
+  border: 1px solid var(--color-border-hover);
+  border-radius: 12px;
+  background: #fff;
+  font: inherit;
+  font-size: 17px;
+  letter-spacing: -0.014em;
+  color: var(--color-text-primary);
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+.auth-input select { padding-left: 16px; cursor: pointer; }
+.auth-input input::placeholder { color: #86868b; }
+.auth-input input:focus, .auth-input select:focus {
+  outline: none;
+  border-color: var(--color-accent-focus);
+  box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.16);
+}
+.auth-aside { display: flex; justify-content: flex-end; margin-top: -4px; }
+.auth-aside a { font-size: 14px; }
+.auth-submit { margin-top: 8px; width: 100%; min-height: 50px; font-size: 17px; }
+.auth-switch { margin-top: 24px; text-align: center; font-size: 15px; color: var(--color-text-secondary); }
+.auth-switch a { font-weight: 600; }
+.auth-actions { margin-top: 28px; display: flex; flex-direction: column; gap: 12px; }
+.auth-actions .lp-btn { width: 100%; min-height: 50px; }
+.auth-status { margin-top: 24px; display: inline-flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 14px; border-radius: 9999px; background: var(--color-warning-bg); color: var(--color-warning); font-size: 14px; font-weight: 600; }
+.auth-status i { width: 8px; height: 8px; border-radius: 50%; background: #ff9f0a; display: block; }
+
+/* Shared pill buttons for pages that do not load landing.css */
+.lp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 26px;
+  border-radius: 9999px;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: -0.016em;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: transform 0.15s var(--ease), background-color 0.2s var(--ease), color 0.2s var(--ease);
+  cursor: pointer;
+  border: 0;
+}
+.lp-btn:active { transform: scale(0.95); }
+.lp-btn:disabled { opacity: 0.5; cursor: wait; transform: none; }
+.lp-btn-primary { background: var(--color-accent); color: #fff; }
+.lp-btn-primary:hover { background: var(--color-accent-hover); color: #fff; }
+.lp-btn-ghost { background: transparent; color: var(--color-accent); box-shadow: inset 0 0 0 1px var(--color-accent); }
+.lp-btn-ghost:hover { background: var(--color-accent); color: #fff; }
+.lp-btn-quiet { background: transparent; color: var(--color-text-secondary); }
+.lp-btn-quiet:hover { background: var(--color-bg-subtle); color: var(--color-text-primary); }

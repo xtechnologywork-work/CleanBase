@@ -1,0 +1,63 @@
+/* Public booking store. Mobile first, one column, the chosen steps stay visible at the top. */
+.st { min-height: 100vh; background: var(--color-bg-body); color: var(--color-text-primary); display: flex; flex-direction: column; }
+.st-top { background: var(--color-bg-surface); border-bottom: 1px solid var(--color-border); }
+.st-top-in { max-width: 760px; margin: 0 auto; padding: 1rem 16px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.st-co { font-size: 1.125rem; font-weight: 700; letter-spacing: -0.02em; }
+.st-co small { display: block; font-size: 0.8125rem; font-weight: 400; color: var(--color-text-tertiary); letter-spacing: 0; }
+.st-main { flex: 1; width: 100%; max-width: 760px; margin: 0 auto; padding: 1.5rem 16px 3rem; display: flex; flex-direction: column; gap: 1.25rem; }
+.st h1 { font-size: clamp(1.5rem, 4vw, 2rem); letter-spacing: -0.03em; line-height: 1.15; margin: 0; }
+.st-lead { color: var(--color-text-secondary); margin: 0.35rem 0 0; font-size: 1rem; }
+
+.st-steps { display: flex; gap: 6px; flex-wrap: wrap; }
+.st-step { border: 0; background: var(--color-bg-surface); border-radius: 999px; padding: 0.45rem 0.85rem; font: inherit; font-size: 0.8125rem; color: var(--color-text-tertiary); }
+.st-step.on { background: var(--color-text-primary); color: #fff; }
+.st-step.done { color: var(--color-text-primary); cursor: pointer; }
+.st-step.done:hover { background: var(--color-bg-subtle); }
+
+.st-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.st-card { text-align: left; border: 1px solid var(--color-border); background: var(--color-bg-surface); border-radius: 16px; padding: 1rem 1.1rem; font: inherit; color: inherit;
+    cursor: pointer; display: flex; flex-direction: column; gap: 6px; transition: border-color .15s, box-shadow .15s; min-height: 64px; }
+.st-card:hover:not(:disabled) { border-color: var(--color-text-primary); }
+.st-card.sel { border-color: var(--color-accent); box-shadow: 0 0 0 3px rgba(0,113,227,.16); }
+.st-card:disabled { cursor: not-allowed; opacity: .55; }
+.st-card b { font-weight: 600; font-size: 1rem; }
+.st-card .st-price { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
+.st-card .st-price small { font-size: 0.75rem; font-weight: 600; color: var(--color-text-tertiary); margin-left: 3px; }
+.st-muted { color: var(--color-text-tertiary); font-size: 0.875rem; }
+.st-who { display: flex; align-items: center; gap: 12px; }
+.st-av { width: 48px; height: 48px; border-radius: 50%; background: var(--color-bg-subtle); display: grid; place-items: center; font-weight: 700; overflow: hidden; flex: none; }
+.st-av img { width: 100%; height: 100%; object-fit: cover; }
+
+.st-panel { background: var(--color-bg-surface); border-radius: 18px; padding: 1rem; }
+.st-cal-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.st-cal-h b { font-weight: 600; }
+.st-nav { border: 0; background: var(--color-bg-body); width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 1.1rem; color: var(--color-text-primary); }
+.st-nav:disabled { opacity: .35; cursor: default; }
+.st-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.st-cal .wd { text-align: center; font-size: 0.75rem; color: var(--color-text-tertiary); padding: 4px 0; }
+.st-day { height: 46px; border: 0; border-radius: 12px; background: var(--color-bg-body); font: inherit; font-weight: 600; color: var(--color-text-primary); cursor: pointer; }
+.st-day:disabled { background: transparent; color: var(--color-text-tertiary); font-weight: 400; cursor: default; text-decoration: line-through; text-decoration-color: rgba(0,0,0,.18); }
+.st-day.blank { visibility: hidden; }
+.st-day.sel { background: var(--color-accent); color: #fff; }
+.st-day.today:not(.sel):not(:disabled) { box-shadow: inset 0 0 0 1.5px var(--color-text-primary); }
+.st-times { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; margin-top: 12px; }
+.st-time { border: 1px solid var(--color-border); background: var(--color-bg-surface); border-radius: 999px; padding: 0.6rem 0; font: inherit; font-weight: 600; cursor: pointer; color: var(--color-text-primary); }
+.st-time:hover { border-color: var(--color-text-primary); }
+.st-time.sel { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+
+.st-form { display: flex; flex-direction: column; gap: 12px; }
+.st-form label { display: flex; flex-direction: column; gap: 6px; font-size: 0.875rem; font-weight: 600; color: var(--color-text-secondary); }
+.st-form input, .st-form textarea { font: inherit; font-size: 1rem; padding: 0.75rem 0.9rem; border: 1px solid var(--color-border-hover); border-radius: 12px; background: var(--color-bg-surface); color: var(--color-text-primary); }
+.st-form input:focus, .st-form textarea:focus { outline: none; border-color: var(--color-accent-focus); box-shadow: 0 0 0 3px rgba(0,113,227,.16); }
+.st-trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+.st-sum { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 0.9375rem; }
+.st-sum span { color: var(--color-text-tertiary); }
+.st-sum b { font-weight: 600; }
+.st-bar { display: flex; gap: 8px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.st-btn { border: 0; border-radius: 999px; padding: 0.8rem 1.4rem; font: inherit; font-weight: 600; cursor: pointer; background: var(--color-accent); color: #fff; }
+.st-btn:disabled { opacity: .5; cursor: default; }
+.st-btn.ghost { background: transparent; color: var(--color-text-primary); padding-left: 0; }
+.st-err { color: var(--color-danger); font-size: 0.9375rem; margin: 0; }
+.st-foot { text-align: center; color: var(--color-text-tertiary); font-size: 0.8125rem; padding: 1.5rem 16px; }
+.st-center { text-align: center; padding: 2.5rem 1rem; }
