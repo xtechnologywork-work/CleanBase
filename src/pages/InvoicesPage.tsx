@@ -4,9 +4,10 @@ import { Banknote, MessageCircle, Plus, Printer, Search } from 'lucide-react';
 import { addDays, format, parseISO } from 'date-fns';
 import {
     addItem, dayLabel, downloadCsv, fmt, invoicePaid, invoiceState, invoiceSubtotal, invoiceTax, invoiceTotal, logActivity,
-    mutateDB, nextNumber, printHtml, readCollection, removeItem, today, updateItem, useCollection, useDB, useSettings,
+    escHtml, mutateDB, nextNumber, printHtml, readCollection, removeItem, today, updateItem, useCollection, useDB, useSettings,
 } from '../services/erp';
 import type { Invoice, InvoiceItem, InvoiceState, PayMethod } from '../services/erp';
+import { renderMessage, whatsappDigits, whatsappUrl } from '../services/bookingMessages';
 import { Empty, Field, Kpi, Modal, Panel, PageHeader, Pill, Table, Tabs } from '../components/shared/ui';
 
 const STATE_TONE: Record<InvoiceState, 'good' | 'bad' | 'warn' | 'info' | undefined> = {
@@ -61,10 +62,13 @@ export const InvoicesPage: React.FC = () => {
 
     const whatsapp = (inv: Invoice) => {
         const c = client(inv.clientId);
-        const text = settings.tplInvoice
-            .replace('{name}', c?.name || '').replace('{number}', inv.number)
-            .replace('{amount}', `${fmt(invoiceTotal(inv))} ${settings.currency}`).replace('{due}', dayLabel(inv.dueDate));
-        window.open(`https://wa.me/${(c?.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+        const digits = whatsappDigits(c?.phone || '');
+        if (!digits) { alert('This client has no valid phone number saved.'); return; }
+        const text = renderMessage(settings.tplInvoice, {
+            name: c?.name || '', service: '', date: inv.issueDate, time: '', cleaner: '', address: c?.address || '',
+            company: db.companies.find(x => x.id === companyId)?.name || '', number: inv.number, amount: invoiceTotal(inv), currency: settings.currency, due: inv.dueDate,
+        });
+        window.open(whatsappUrl(digits, text), '_blank', 'noopener');
     };
 
     const print = (inv: Invoice) => {
@@ -72,20 +76,20 @@ export const InvoicesPage: React.FC = () => {
         const co = db.companies.find(x => x.id === companyId);
         const paid = invoicePaid(inv, payments);
         printHtml(`Invoice ${inv.number}`, `
-            <h1>${settings.legalName || co?.name || 'Invoice'}</h1>
-            <div class="muted">${settings.taxId ? 'Tax ID ' + settings.taxId : ''}</div>
-            <p><b>Invoice ${inv.number}</b><br>Issued ${dayLabel(inv.issueDate)} · Due ${dayLabel(inv.dueDate)}</p>
-            <p><b>Bill to</b><br>${c?.name || ''}<br>${c?.address || ''}<br>${c?.phone || ''}</p>
+            <h1>${escHtml(settings.legalName || co?.name || 'Invoice')}</h1>
+            <div class="muted">${settings.taxId ? 'Tax ID ' + escHtml(settings.taxId) : ''}</div>
+            <p><b>Invoice ${escHtml(inv.number)}</b><br>Issued ${dayLabel(inv.issueDate)} · Due ${dayLabel(inv.dueDate)}</p>
+            <p><b>Bill to</b><br>${escHtml(c?.name)}<br>${escHtml(c?.address)}<br>${escHtml(c?.phone)}</p>
             <table><tr><th>Description</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Amount</th></tr>
-            ${inv.items.map(i => `<tr><td>${i.description}</td><td class="r">${i.qty}</td><td class="r">${fmt(i.price)}</td><td class="r">${fmt(i.qty * i.price)}</td></tr>`).join('')}</table>
+            ${inv.items.map(i => `<tr><td>${escHtml(i.description)}</td><td class="r">${escHtml(i.qty)}</td><td class="r">${fmt(i.price)}</td><td class="r">${fmt(i.qty * i.price)}</td></tr>`).join('')}</table>
             <div class="tot"><span>Subtotal</span><span>${fmt(invoiceSubtotal(inv))}</span></div>
             ${inv.discount ? `<div class="tot"><span>Discount</span><span>-${fmt(inv.discount)}</span></div>` : ''}
             ${inv.taxRate ? `<div class="tot"><span>Tax ${inv.taxRate}%</span><span>${fmt(invoiceTax(inv))}</span></div>` : ''}
             <div class="tot big"><span>Total ${settings.currency}</span><span>${fmt(invoiceTotal(inv))}</span></div>
             <div class="tot"><span>Paid</span><span>${fmt(paid)}</span></div>
             <div class="tot big"><span>Balance</span><span>${fmt(invoiceTotal(inv) - paid)}</span></div>
-            ${settings.bankDetails ? `<p class="muted"><b>Bank details</b><br>${settings.bankDetails.replace(/\n/g, '<br>')}</p>` : ''}
-            <p class="muted">${settings.invoiceFooter}</p>`);
+            ${settings.bankDetails ? `<p class="muted"><b>Bank details</b><br>${escHtml(settings.bankDetails).replace(/\n/g, '<br>')}</p>` : ''}
+            <p class="muted">${escHtml(settings.invoiceFooter)}</p>`);
     };
 
     return (
@@ -227,6 +231,7 @@ const InvoiceDetail: React.FC<{
                         <button className="btn btn-primary" onClick={() => {
                             const a = Number(amount || balance);
                             if (!(a > 0)) return alert('Enter an amount above zero.');
+                            if (a > balance + 0.005) return alert(`That is more than the balance of ${fmt(Math.max(0, balance))} QAR. Enter the balance or less.`);
                             onPay(a, method, date, ref, 'payment'); setAmount(''); setRef('');
                         }}>Record payment</button>
                         {paid > 0 && <button className="btn btn-secondary" onClick={() => {

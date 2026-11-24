@@ -1,0 +1,7 @@
+/* Pages that must feel like an app (the driver pages): no pinch zoom, no sideways scrolling, no zoom when a field is tapped.
+   Sideways overflow is CLIPPED, never "hidden": overflow hidden on html and body turns them into scroll boxes and the page stops scrolling up and down. */
+html.app-lock, html.app-lock body { overflow-x: clip; overflow-y: visible; max-width: 100%; overscroll-behavior-y: none; touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html.app-lock body { -webkit-tap-highlight-color: transparent; }
+html.app-lock .st, html.app-lock .dv { max-width: 100%; overflow-x: clip; overflow-y: visible; }
+html.app-lock input, html.app-lock select, html.app-lock textarea { font-size: 16px; box-sizing: border-box; max-width: 100%; }
+html.app-lock .st-form input[type="checkbox"] { width: 18px; height: 18px; flex: none; }

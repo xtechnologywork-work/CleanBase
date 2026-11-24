@@ -1,14 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Check } from 'lucide-react';
-import { DEFAULT_REVIEW_TEMPLATE, useSettings } from '../services/erp';
+import { useSettings } from '../services/erp';
 import type { BizSettings } from '../services/erp';
+import { DEFAULT_TEMPLATES } from '../services/bookingMessages';
+import { RESERVE_MODES, reserveModeOf } from '../services/reservations';
+import type { TemplateKey } from '../services/bookingMessages';
 import { ALL_PAGES, ROLE_PAGES } from '../services/permissions';
 import { roleLabel } from '../services/erp';
 import { Field, PageHeader, Panel } from '../components/shared/ui';
-import { isCloud } from '../services/backend';
-import { exportCompany, importLegacyCompany, listLegacyCompanies } from '../services/dataTransfer';
+import { exportCompany } from '../services/dataTransfer';
 import type { UserRole } from '../types';
+
+const TEMPLATE_FIELDS: [TemplateKey, string, string | undefined][] = [
+    ['tplConfirmation', 'Booking confirmed', 'Sent when the booking is Confirmed'],
+    ['tplReminder', 'Reminder', 'Sent before the appointment'],
+    ['tplInvoice', 'Invoice', 'Sent with the invoice number, amount and due date'],
+    ['tplPending', 'Request received', 'Sent when the booking is Pending'],
+    ['tplInProgress', 'Cleaning started', 'Sent when the booking is In Progress'],
+    ['tplCompleted', 'Cleaning completed', 'Sent when the booking is Completed'],
+    ['tplCancelled', 'Booking cancelled', 'Sent when the booking is Cancelled'],
+    ['tplDeclined', 'Request declined', 'Sent when you decline a booking request. {reason} is the reason you chose, {link} is your booking page'],
+    ['tplReview', 'Review request (private page)', 'Sent with the private review link'],
+    ['tplReviewGoogle', 'Google review request', 'Sent with your Google Maps review link. Turn it on in Settings, Reviews'],
+];
 
 export const BusinessPage: React.FC = () => {
     const { user } = useAuth();
@@ -22,9 +37,6 @@ export const BusinessPage: React.FC = () => {
 
     const set = <K extends keyof BizSettings>(k: K, v: BizSettings[K]) => { setF({ ...f, [k]: v }); setSaved(false); };
     const roles: UserRole[] = ['companyadmin', 'manager', 'dispatcher', 'accountant', 'cleaner'];
-    const [legacyPick, setLegacyPick] = useState('');
-    const [importMsg, setImportMsg] = useState('');
-    const legacy = listLegacyCompanies();
     const origin = window.location.origin;
     const bookingLink = `${origin}/book?c=${companyId}`;
     const portalLink = `${origin}/portal?c=${companyId}`;
@@ -51,24 +63,42 @@ export const BusinessPage: React.FC = () => {
                 </Panel>
                 <Panel title="Booking rules" subtitle="Working hours and notice periods your team follows">
                     <div className="frow">
-                        <Field label="Day starts" half><input type="time" value={f.workStart} onChange={e => set('workStart', e.target.value)} /></Field>
-                        <Field label="Day ends" half><input type="time" value={f.workEnd} onChange={e => set('workEnd', e.target.value)} /></Field>
+                        <Field label="Working hours" hint="Opening and closing time for each day are in Settings, Working Hours.">
+                            <div className="sub" style={{ padding: '0.55rem 0' }}>
+                                {Array.isArray(f.weekHours) && f.weekHours.length === 7
+                                    ? `${f.weekHours.filter(d => d.open).length} days a week, ${f.workStart} to ${f.workEnd} at the widest`
+                                    : `Every day, ${f.workStart} to ${f.workEnd}`}
+                            </div>
+                        </Field>
                         <Field label="Minimum notice (hours)" half><input type="number" value={f.minNoticeHours} onChange={e => set('minNoticeHours', Number(e.target.value))} /></Field>
                         <Field label="Free cancellation until (hours before)" half><input type="number" value={f.cancellationHours} onChange={e => set('cancellationHours', Number(e.target.value))} /></Field>
                         <Field label="Currency" half><input value={f.currency} onChange={e => set('currency', e.target.value)} /></Field>
                         <Field label="Time zone" half hint="Used by the booking store, for example Asia/Qatar"><input value={f.timezone ?? 'Asia/Qatar'} list="tz-list" onChange={e => set('timezone', e.target.value)} />
                             <datalist id="tz-list">{['Asia/Qatar', 'Asia/Dubai', 'Asia/Riyadh', 'Asia/Kuwait', 'Asia/Bahrain', 'Asia/Muscat', 'Africa/Casablanca', 'Africa/Cairo', 'Europe/London'].map(z => <option key={z} value={z} />)}</datalist></Field>
+                        <Field label="Drive time, accommodation to client (minutes)" half hint="Drivers leave this long before a job, and bring the cleaner home after it">
+                            <input type="number" min="0" max="240" value={f.travelMinutes ?? 30} onChange={e => set('travelMinutes', Math.max(0, Math.min(240, Number(e.target.value) || 0)))} /></Field>
+                        <Field label="Keep a cleaner for her subscription client" hint={RESERVE_MODES.find(m => m.value === reserveModeOf(f))?.hint}>
+                            <select value={reserveModeOf(f)} onChange={e => set('reserveCleaners', e.target.value as 'monthly' | 'all' | 'off')}>
+                                {RESERVE_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                            </select></Field>
                         <Field label="Clients can book up to (days ahead)" half><input type="number" min="1" max="365" value={f.bookingDays ?? 60} onChange={e => set('bookingDays', Number(e.target.value))} /></Field>
                     </div>
                 </Panel>
             </div>
 
-            <Panel title="Message templates" subtitle="Used when you share an invoice or booking by WhatsApp. Placeholders: {name} {service} {date} {time} {number} {amount} {due}">
+            <Panel title="Message templates" subtitle="WhatsApp messages to your clients. Each one has an English part and an Arabic part: write the Arabic lines in Arabic and they get Arabic dates and times automatically. Placeholders: {name} {service} {date} {time} {address} {cleaner} {company} {number} {amount} {due} {link} {reason}. A line whose placeholders are all empty is left out.">
                 <div className="frow">
-                    <Field label="Booking confirmation"><textarea value={f.tplConfirmation} onChange={e => set('tplConfirmation', e.target.value)} /></Field>
-                    <Field label="Reminder"><textarea value={f.tplReminder} onChange={e => set('tplReminder', e.target.value)} /></Field>
-                    <Field label="Invoice"><textarea value={f.tplInvoice} onChange={e => set('tplInvoice', e.target.value)} /></Field>
-                    <Field label="Review request" hint="Sent with the private review link. Placeholders: {name} {company} {service} {date} {link}"><textarea value={f.tplReview ?? DEFAULT_REVIEW_TEMPLATE} onChange={e => set('tplReview', e.target.value)} /></Field>
+                    {TEMPLATE_FIELDS.map(([key, label, hint]) => (
+                        <Field key={key} label={label} hint={hint}>
+                            <textarea rows={9} dir="auto" value={f[key] ?? DEFAULT_TEMPLATES[key]} onChange={e => set(key, e.target.value)} />
+                        </Field>
+                    ))}
+                </div>
+                <div className="toolbar" style={{ marginTop: 12 }}>
+                    <button className="btn btn-secondary btn-sm" onClick={() => {
+                        if (!window.confirm('Replace all message templates with the new English + Arabic defaults? Your own wording will be lost. You still need to press Save changes.')) return;
+                        setF({ ...f, ...DEFAULT_TEMPLATES }); setSaved(false);
+                    }}>Reset all messages to the English + Arabic defaults</button>
                 </div>
             </Panel>
 
@@ -86,24 +116,6 @@ export const BusinessPage: React.FC = () => {
                         <div><b style={{ fontWeight: 600 }}>Export company data</b><div className="sub">Everything in one JSON file: clients, bookings, invoices, payroll and more.</div></div>
                         <button className="btn btn-secondary btn-sm" onClick={() => { void exportCompany(companyId); }}>Download export</button>
                     </div>
-                    {isCloud && legacy.length > 0 && (
-                        <div style={{ background: 'var(--color-bg-body)', padding: '1rem', borderRadius: 14 }}>
-                            <b style={{ fontWeight: 600 }}>Bring in data from this browser</b>
-                            <div className="sub" style={{ margin: '4px 0 10px' }}>Data you entered before the online version is still in this browser. Choose a company to copy into your account. Nothing is deleted here.</div>
-                            <div className="toolbar">
-                                <select className="input-field" value={legacyPick} onChange={e => setLegacyPick(e.target.value)}>
-                                    <option value="">Choose a company</option>
-                                    {legacy.map(l => <option key={l.id} value={l.id}>{l.name} ({l.bookings} bookings, {l.clients} clients, {l.staff} staff)</option>)}
-                                </select>
-                                <button className="btn btn-primary btn-sm" disabled={!legacyPick} onClick={() => {
-                                    if (!confirm('Copy this company data into your account?')) return;
-                                    const r = importLegacyCompany(legacyPick, companyId);
-                                    setImportMsg(`Imported ${r.imported} records (${r.skipped} skipped). Team members must sign up with their email to log in.`);
-                                }}>Import</button>
-                            </div>
-                            {importMsg && <div className="tiny" style={{ marginTop: 8 }} role="status">{importMsg}</div>}
-                        </div>
-                    )}
                 </div>
             </Panel>
 

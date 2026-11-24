@@ -1,51 +1,70 @@
+import { lazy, Suspense } from 'react';
+import type { ComponentType } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
 import { SuperAdminLayout } from './components/layout/SuperAdminLayout';
-import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
-import { RegisterPage } from './pages/RegisterPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { BookingsPage } from './pages/BookingsPage';
-import { ClientsPage } from './pages/ClientsPage';
-import { StaffPage } from './pages/StaffPage';
-import { ServicesPage } from './pages/ServicesPage';
-import { PublicBookingPage } from './pages/PublicBookingPage';
-import { SettingsPage } from './pages/SettingsPage';
-import { LockedPage } from './pages/LockedPage';
-import { SuperAdminOverview } from './pages/superadmin/SuperAdminOverview';
-import { SuperAdminTenants } from './pages/superadmin/SuperAdminTenants';
-import { SuperAdminAnalytics as SuperAdminAnalyticsPage } from './pages/superadmin/SuperAdminAnalytics';
-import { SuperAdminAuditLogs } from './pages/superadmin/SuperAdminAuditLogs';
-import { SuperAdminSettings } from './pages/superadmin/SuperAdminSettings';
-import { SuperAdminBilling } from './pages/superadmin/SuperAdminBilling';
-import { AnalyticsPage } from './pages/AnalyticsPage';
-import { SubscriptionsPage } from './pages/SubscriptionsPage';
-import { ClientPortalPage } from './pages/portal/ClientPortalPage';
-import { InvoicesPage } from './pages/InvoicesPage';
-import { ExpensesPage } from './pages/ExpensesPage';
-import { DispatchPage } from './pages/DispatchPage';
-import { ResourcesPage } from './pages/ResourcesPage';
-import { TeamHubPage } from './pages/TeamHubPage';
-import { SalesPage } from './pages/SalesPage';
-import { QualityPage } from './pages/QualityPage';
-import { ClientProfilePage } from './pages/ClientProfilePage';
-import { ReportsPage } from './pages/ReportsPage';
-import { ActivityPage } from './pages/ActivityPage';
-import { BusinessPage } from './pages/BusinessPage';
-import { AiManagerPage } from './pages/AiManagerPage';
-import { ReviewPage } from './pages/ReviewPage';
+
+/** Each page is downloaded the first time it is opened, so the first screen loads fast (customers on the booking page never download the dashboard). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const page = <M extends Record<string, ComponentType<any>>>(load: () => Promise<M>, name: keyof M) =>
+  lazy(() => load().then(m => ({ default: m[name] })));
+
+const LandingPage = page(() => import('./pages/LandingPage'), 'LandingPage');
+const RegisterPage = page(() => import('./pages/RegisterPage'), 'RegisterPage');
+const ForgotPasswordPage = page(() => import('./pages/PasswordResetPages'), 'ForgotPasswordPage');
+const ResetPasswordPage = page(() => import('./pages/PasswordResetPages'), 'ResetPasswordPage');
+const DashboardPage = page(() => import('./pages/DashboardPage'), 'DashboardPage');
+const BookingsPage = page(() => import('./pages/BookingsPage'), 'BookingsPage');
+const ClientsPage = page(() => import('./pages/ClientsPage'), 'ClientsPage');
+const StaffPage = page(() => import('./pages/StaffPage'), 'StaffPage');
+const ServicesPage = page(() => import('./pages/ServicesPage'), 'ServicesPage');
+const PublicBookingPage = page(() => import('./pages/PublicBookingPage'), 'PublicBookingPage');
+const SettingsPage = page(() => import('./pages/SettingsPage'), 'SettingsPage');
+const LockedPage = page(() => import('./pages/LockedPage'), 'LockedPage');
+const SuperAdminOverview = page(() => import('./pages/superadmin/SuperAdminOverview'), 'SuperAdminOverview');
+const SuperAdminTenants = page(() => import('./pages/superadmin/SuperAdminTenants'), 'SuperAdminTenants');
+const SuperAdminAnalyticsPage = page(() => import('./pages/superadmin/SuperAdminAnalytics'), 'SuperAdminAnalytics');
+const SuperAdminAuditLogs = page(() => import('./pages/superadmin/SuperAdminAuditLogs'), 'SuperAdminAuditLogs');
+const SuperAdminSettings = page(() => import('./pages/superadmin/SuperAdminSettings'), 'SuperAdminSettings');
+const SuperAdminBilling = page(() => import('./pages/superadmin/SuperAdminBilling'), 'SuperAdminBilling');
+const AnalyticsPage = page(() => import('./pages/AnalyticsPage'), 'AnalyticsPage');
+const SubscriptionsPage = page(() => import('./pages/SubscriptionsPage'), 'SubscriptionsPage');
+const ClientPortalPage = page(() => import('./pages/portal/ClientPortalPage'), 'ClientPortalPage');
+const InvoicesPage = page(() => import('./pages/InvoicesPage'), 'InvoicesPage');
+const ExpensesPage = page(() => import('./pages/ExpensesPage'), 'ExpensesPage');
+const DispatchPage = page(() => import('./pages/DispatchPage'), 'DispatchPage');
+const ResourcesPage = page(() => import('./pages/ResourcesPage'), 'ResourcesPage');
+const TeamHubPage = page(() => import('./pages/TeamHubPage'), 'TeamHubPage');
+const SalesPage = page(() => import('./pages/SalesPage'), 'SalesPage');
+const QualityPage = page(() => import('./pages/QualityPage'), 'QualityPage');
+const ClientProfilePage = page(() => import('./pages/ClientProfilePage'), 'ClientProfilePage');
+const ReportsPage = page(() => import('./pages/ReportsPage'), 'ReportsPage');
+const ActivityPage = page(() => import('./pages/ActivityPage'), 'ActivityPage');
+const BusinessPage = page(() => import('./pages/BusinessPage'), 'BusinessPage');
+const AiManagerPage = page(() => import('./pages/AiManagerPage'), 'AiManagerPage');
+const ReviewPage = page(() => import('./pages/ReviewPage'), 'ReviewPage');
+const DriverApp = page(() => import('./pages/driver/DriverApp'), 'DriverApp');
+const DriverLogin = page(() => import('./pages/driver/DriverLogin'), 'DriverLogin');
+const DriverBoardPage = page(() => import('./pages/DriverBoardPage'), 'DriverBoardPage');
+
+const PageLoading = () => (
+  <div role="status" style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '0.9375rem' }}>Loading...</div>
+);
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SyncStatus } from './components/shared/SyncStatus';
 import { SheetKeys } from './components/shared/SheetKeys';
 import { can, firstAllowed } from './services/permissions';
+import { DRIVER_COMPANY_KEY } from './services/driverAccounts';
 import type { PageKey } from './services/permissions';
 
 const ProtectedRoute = ({ children, requireRole, forbidRole, allowLocked }: { children: React.ReactNode, requireRole?: 'superadmin', forbidRole?: 'superadmin', allowLocked?: boolean }) => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isImpersonating } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
-  if (user?.status === 'locked' && !allowLocked) return <Navigate to="/locked" replace />;
+  // The platform admin may open a company that is still waiting for approval or suspended, to help it
+  if (user?.status === 'locked' && !allowLocked && !isImpersonating) return <Navigate to="/locked" replace />;
   if (user?.status === 'active' && allowLocked) return <Navigate to={user?.role === 'superadmin' ? '/admin' : '/app'} replace />;
 
   if (requireRole && user?.role !== requireRole) return <Navigate to="/app" replace />;
@@ -60,6 +79,18 @@ const Gate = ({ page, children }: { page: PageKey, children: React.ReactNode }) 
   return <>{children}</>;
 };
 
+/** The driver app. A signed-out driver goes back to the sign in page of their company (remembered on this phone), never to the owner's login. */
+const DriverGate = ({ children }: { children: React.ReactNode }) => {
+  const { user, isAuthenticated, isImpersonating } = useAuth();
+  let saved = '';
+  try { saved = localStorage.getItem(DRIVER_COMPANY_KEY) || ''; } catch { /* storage blocked */ }
+  const loginFor = (c: string) => (c ? `/driver/login?c=${encodeURIComponent(c)}` : '/login');
+  if (!isAuthenticated) return <Navigate to={loginFor(saved)} replace />;
+  if (user?.role === 'superadmin') return <Navigate to="/admin" replace />;
+  if (user?.status === 'locked' && !isImpersonating) return <Navigate to={user.role === 'driver' ? loginFor(user.companyId || saved) : '/locked'} replace />;
+  return <Gate page="drive">{children}</Gate>;
+};
+
 const AppIndexRoute = () => {
   const { user } = useAuth();
   if (!can(user?.role, 'overview')) return <Navigate to={firstAllowed(user?.role)} replace />;
@@ -72,6 +103,7 @@ function App() {
       <SyncStatus />
       <SheetKeys />
       <BrowserRouter>
+        <Suspense fallback={<PageLoading />}>
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
@@ -79,8 +111,12 @@ function App() {
           <Route path="/store/:companyId" element={<PublicBookingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/portal" element={<ClientPortalPage />} />
           <Route path="/review/:token" element={<ReviewPage />} />
+          <Route path="/driver/login" element={<DriverLogin />} />
+          <Route path="/driver" element={<DriverGate><DriverApp /></DriverGate>} />
           <Route path="/locked" element={<ProtectedRoute allowLocked><LockedPage /></ProtectedRoute>} />
 
           {/* Super Admin Route */}
@@ -102,6 +138,7 @@ function App() {
             <Route path="analytics" element={<Gate page="analytics"><AnalyticsPage /></Gate>} />
             <Route path="bookings" element={<Gate page="bookings"><BookingsPage /></Gate>} />
             <Route path="dispatch" element={<Gate page="dispatch"><DispatchPage /></Gate>} />
+            <Route path="drivers" element={<Gate page="drivers"><DriverBoardPage /></Gate>} />
             <Route path="subscriptions" element={<Gate page="subscriptions"><SubscriptionsPage /></Gate>} />
             <Route path="clients" element={<Gate page="clients"><ClientsPage /></Gate>} />
             <Route path="clients/:id" element={<Gate page="clients"><ClientProfilePage /></Gate>} />
@@ -123,6 +160,7 @@ function App() {
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
       </BrowserRouter>
     </AuthProvider>
   );

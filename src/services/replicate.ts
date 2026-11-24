@@ -14,9 +14,9 @@ import type { User } from '../types';
 
 export const CORE = ['companies', 'bookings', 'clients', 'services', 'staff', 'notifications', 'subscriptions', 'reviews', 'automations'] as const;
 export const ERP = ['invoices', 'payments', 'expenses', 'zones', 'vehicles', 'supplies', 'supplyUsage', 'jobMeta', 'staffMeta', 'staffDocs',
-    'attendance', 'leave', 'payroll', 'leads', 'quotes', 'complaints', 'promos', 'clientMeta', 'reviewRequests', 'contractTemplates', 'contracts', 'activity', 'settings'] as const;
+    'attendance', 'leave', 'payroll', 'leads', 'quotes', 'complaints', 'promos', 'clientMeta', 'reviewRequests', 'contractTemplates', 'contracts', 'activity', 'settings', 'trips', 'accommodations'] as const;
 /** Platform-admin-only collections: stored without a company id, so tenants can never read or write them. */
-export const PLATFORM = ['platformPayments'] as const;
+export const PLATFORM = ['platformPayments', 'tenantNotes'] as const;
 const RECORD_COLLECTIONS: string[] = [...CORE, ...ERP, ...PLATFORM, 'auditLogs', 'platformSettings'];
 
 type Row = { id: string; [k: string]: unknown };
@@ -196,8 +196,15 @@ function computeOps(): Ops[] {
 
 const REJECTED = (e: { code?: string; status?: number }) =>
     e.code === '42501' || e.code === 'P0001' || e.code === '23505' || e.code === '23514' || e.status === 403 || e.status === 400 || e.status === 409;
+/** Which kind of record was being saved when the database refused, in words a person understands. */
+const WHAT: Record<string, string> = {
+    trips: 'driver rides', accommodations: 'accommodations', users: 'team members', staff: 'cleaners and drivers', bookings: 'bookings', clients: 'clients',
+    invoices: 'invoices', payments: 'payments', settings: 'business settings', companies: 'company details', activity: 'the activity log',
+};
+let pushing = '';
 const friendly = (e: { code?: string; message?: string }) =>
-    e.code === '42501' ? 'You do not have permission to make that change, so it was not saved.'
+    e.code === '42501' ? `You do not have permission to change ${pushing ? (WHAT[pushing] || pushing) : 'this'}, so it was not saved.`
+    
     : e.code === '23505' ? 'That email or record already exists, so it was not saved.'
     : e.message || 'The change was refused by the database.';
 
@@ -209,6 +216,7 @@ const chunk = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length
 async function applyOps(ops: Ops[]) {
     const supa = sb();
     for (const { col, insert, update, remove } of ops) {
+        pushing = col;
         const upd = (rows: Row[]) => rows.forEach(r => snap[col].set(r.id, snapKey(col, r)));
         snap[col] ||= new Map();
         if (col === 'users') {
@@ -290,7 +298,7 @@ function schedule() {
 let channel: ReturnType<ReturnType<typeof sb>['channel']> | null = null;
 let started = false;
 
-function applyRemote(col: string, id: string, row: Row | null) {
+export function applyRemote(col: string, id: string, row: Row | null) {
     const local = readLocal();
     const rows = local[col] || [];
     const known = (snap[col] ||= new Map());

@@ -1,28 +1,28 @@
 import { isCloud } from '../services/backend';
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useDB } from '../services/erp';
 import { useAuth } from '../contexts/AuthContext';
 import { getDB, saveDB } from '../services/mockDb';
 import type { Company, UserRole, User } from '../types';
-import { Save, Building, MapPin, CheckCircle2, Users, Plus, X, Trash2 } from 'lucide-react';
+import { Save, Building, MapPin, CheckCircle2, Users, Plus, X, Trash2, Palette, Clock, Star, Car } from 'lucide-react';
+import { BrandingPanel } from '../components/settings/BrandingPanel';
+import { ReviewsPanel } from '../components/settings/ReviewsPanel';
+import { WorkingHoursPanel } from '../components/settings/WorkingHoursPanel';
+import { DriversPanel } from '../components/settings/DriversPanel';
 
-type Tab = 'general' | 'areas' | 'team';
+type Tab = 'general' | 'branding' | 'hours' | 'reviews' | 'drivers' | 'areas' | 'team';
 
 export const SettingsPage: React.FC = () => {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<Tab>('general');
-    const [company, setCompany] = useState<Company | null>(null);
+    // The form edits a copy of the company; it is read once when the page opens
+    const [company, setCompany] = useState<Company | null>(() => {
+        const found = user?.companyId ? getDB().companies.find(c => c.id === user.companyId) : undefined;
+        return found ? { ...found, serviceAreas: found.serviceAreas || [] } : null;
+    });
     const [saving, setSaving] = useState(false);
     const [savedMessage, setSavedMessage] = useState('');
-
-    useEffect(() => {
-        if (user?.companyId) {
-            const db = getDB();
-            const found = db.companies.find(c => c.id === user.companyId);
-            if (found) {
-                setCompany({ ...found, serviceAreas: found.serviceAreas || [] });
-            }
-        }
-    }, [user]);
+    const live = useDB();
 
     const handleSaveGeneral = (e: React.FormEvent) => {
         e.preventDefault();
@@ -36,7 +36,11 @@ export const SettingsPage: React.FC = () => {
             const db = getDB();
             const index = db.companies.findIndex(c => c.id === company.id);
             if (index !== -1) {
-                db.companies[index] = company;
+                // Only what the owner edits here is written. Plan, price, license and approval belong to the
+                // platform admin, so the latest saved values are kept (the database enforces this too).
+                const { subscriptionPlan: _p, monthlyRevenue: _m, licenseUntil: _l, approvedAt: _a, adminNotes: _n, createdAt: _c, id: _i, ...editable } = company;
+                void _p; void _m; void _l; void _a; void _n; void _c; void _i;
+                db.companies[index] = { ...db.companies[index], ...editable };
                 saveDB(db);
                 setSavedMessage('Settings saved successfully');
                 setTimeout(() => setSavedMessage(''), 3000);
@@ -63,24 +67,27 @@ export const SettingsPage: React.FC = () => {
         }
     };
 
-    const [teamMembers, setTeamMembers] = useState<User[]>([]);
+    // Live list: someone added or removed on another device shows up here too
+    const teamMembers = useMemo<User[]>(() => live.users.filter(u => u.companyId === company?.id && u.id !== user?.id && u.role !== 'driver'), [live, company?.id, user?.id]);
     const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
     const [newTeamMember, setNewTeamMember] = useState({ name: '', email: '', password: '', role: 'staff' as UserRole });
-
-    useEffect(() => {
-        if (company) {
-            const db = getDB();
-            setTeamMembers(db.users.filter(u => u.companyId === company.id && u.id !== user?.id));
-        }
-    }, [company, user?.id]);
 
     const handleCreateTeamMember = (e: React.FormEvent) => {
         e.preventDefault();
         const db = getDB();
+        const email = newTeamMember.email.trim().toLowerCase();
+        if (db.users.some(u => (u.email || '').trim().toLowerCase() === email)) {
+            alert('This email already has an account. Use another email.');
+            return;
+        }
+        if (!isCloud && newTeamMember.password.length < 8) {
+            alert('The password needs at least 8 characters.');
+            return;
+        }
         const newUser: User = {
             id: `u-${Date.now()}`,
-            name: newTeamMember.name,
-            email: newTeamMember.email,
+            name: newTeamMember.name.trim(),
+            email,
             password: isCloud ? undefined : newTeamMember.password,
             role: newTeamMember.role,
             companyId: company!.id,
@@ -103,7 +110,6 @@ export const SettingsPage: React.FC = () => {
         }
 
         saveDB(db);
-        setTeamMembers([...teamMembers, newUser]);
         setIsTeamModalOpen(false);
         setNewTeamMember({ name: '', email: '', password: '', role: 'staff' });
         setSavedMessage('Team member created successfully');
@@ -118,7 +124,6 @@ export const SettingsPage: React.FC = () => {
         db.staff = db.staff.filter(s => s.userId !== memberId);
         saveDB(db);
 
-        setTeamMembers(teamMembers.filter(m => m.id !== memberId));
         setSavedMessage('Team member removed');
         setTimeout(() => setSavedMessage(''), 3000);
     };
@@ -156,9 +161,9 @@ export const SettingsPage: React.FC = () => {
                 )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '1.5rem', alignItems: 'start' }}>
+            <div className="settings-grid">
                 {/* Clean Sub-navigation */}
-                <div className="card" style={{ padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                <div className="card settings-nav" style={{ padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <button
                         onClick={() => setActiveTab('general')}
                         style={{
@@ -179,6 +184,94 @@ export const SettingsPage: React.FC = () => {
                     >
                         <Building size={15} color={activeTab === 'general' ? 'var(--color-primary)' : 'currentColor'} />
                         <span>General Profile</span>
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab('branding')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.625rem',
+                            padding: '0.6rem 0.75rem',
+                            borderRadius: '6px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '0.8125rem',
+                            fontWeight: activeTab === 'branding' ? 600 : 500,
+                            backgroundColor: activeTab === 'branding' ? 'var(--color-bg-subtle)' : 'transparent',
+                            color: activeTab === 'branding' ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+                            textAlign: 'left',
+                            transition: 'all 0.15s ease'
+                        }}
+                    >
+                        <Palette size={15} color={activeTab === 'branding' ? 'var(--color-primary)' : 'currentColor'} />
+                        <span>Branding</span>
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab('hours')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.625rem',
+                            padding: '0.6rem 0.75rem',
+                            borderRadius: '6px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '0.8125rem',
+                            fontWeight: activeTab === 'hours' ? 600 : 500,
+                            backgroundColor: activeTab === 'hours' ? 'var(--color-bg-subtle)' : 'transparent',
+                            color: activeTab === 'hours' ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+                            textAlign: 'left',
+                            transition: 'all 0.15s ease'
+                        }}
+                    >
+                        <Clock size={15} color={activeTab === 'hours' ? 'var(--color-primary)' : 'currentColor'} />
+                        <span>Working Hours</span>
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab('reviews')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.625rem',
+                            padding: '0.6rem 0.75rem',
+                            borderRadius: '6px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '0.8125rem',
+                            fontWeight: activeTab === 'reviews' ? 600 : 500,
+                            backgroundColor: activeTab === 'reviews' ? 'var(--color-bg-subtle)' : 'transparent',
+                            color: activeTab === 'reviews' ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+                            textAlign: 'left',
+                            transition: 'all 0.15s ease'
+                        }}
+                    >
+                        <Star size={15} color={activeTab === 'reviews' ? 'var(--color-primary)' : 'currentColor'} />
+                        <span>Reviews</span>
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab('drivers')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.625rem',
+                            padding: '0.6rem 0.75rem',
+                            borderRadius: '6px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '0.8125rem',
+                            fontWeight: activeTab === 'drivers' ? 600 : 500,
+                            backgroundColor: activeTab === 'drivers' ? 'var(--color-bg-subtle)' : 'transparent',
+                            color: activeTab === 'drivers' ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+                            textAlign: 'left',
+                            transition: 'all 0.15s ease'
+                        }}
+                    >
+                        <Car size={15} color={activeTab === 'drivers' ? 'var(--color-primary)' : 'currentColor'} />
+                        <span>Drivers</span>
                     </button>
 
                     <button
@@ -278,6 +371,20 @@ export const SettingsPage: React.FC = () => {
                         </div>
                     )}
 
+                    {/* Branding Tab */}
+                    {activeTab === 'branding' && (
+                        <BrandingPanel company={company} setCompany={setCompany} onSave={saveCompanyData} saving={saving} />
+                    )}
+
+                    {/* Working Hours Tab */}
+                    {activeTab === 'hours' && <WorkingHoursPanel companyId={company.id} />}
+
+                    {/* Reviews Tab */}
+                    {activeTab === 'reviews' && <ReviewsPanel companyId={company.id} companyName={company.name} />}
+
+                    {/* Drivers Tab */}
+                    {activeTab === 'drivers' && <DriversPanel companyId={company.id} companyName={company.name} actor={user?.name || 'Owner'} />}
+
                     {/* Service Areas Tab */}
                     {activeTab === 'areas' && (
                         <div className="card" style={{ padding: '1.75rem' }}>
@@ -356,7 +463,7 @@ export const SettingsPage: React.FC = () => {
                                         Dashboard Accounts & Team
                                     </h2>
                                     <p style={{ margin: '0.2rem 0 0', fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>
-                                        Members authorized to access dispatch tools and manage appointments.
+                                        Members authorized to access dispatch tools and manage appointments. Drivers have their own tab.
                                     </p>
                                 </div>
                                 <button
@@ -509,7 +616,6 @@ export const SettingsPage: React.FC = () => {
                                             <option value="dispatcher">Dispatcher</option>
                                             <option value="accountant">Accountant</option>
                                             <option value="staff">Operations Staff</option>
-                                            <option value="driver">Fleet Driver</option>
                                             <option value="cleaner">Field Cleaner</option>
                                         </select>
                                     </div>

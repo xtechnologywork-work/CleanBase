@@ -4,8 +4,10 @@ import { Plus, Printer } from 'lucide-react';
 import { format } from 'date-fns';
 import { getDB } from '../services/mockDb';
 import {
-    addItem, dayLabel, fmt, fmt0, logActivity, mutateDB, nextNumber, removeItem, staffName, updateItem, useCollection, useDB,
+    addItem, dayLabel, fmt, fmt0, cleanersOf, getSettings, logActivity, mutateDB, nextNumber, removeItem, reservationsFor, staffName, updateItem, useCollection, useDB,
 } from '../services/erp';
+import { clashes, reservationsOf, reservedDuring, reserveModeOf, untilText } from '../services/reservations';
+import type { Reservation } from '../services/reservations';
 import type { Contract, ContractTemplate, Installment, PayMethod } from '../services/erp';
 import {
     buildSchedule, CANCEL_REASONS, CONTRACT_FIELDS, contractBadge, contractValues, FREQUENCY_LABEL, fillContract, installmentState, isMonthlyPlan, monthlyValue, printContract, priceUnit,
@@ -44,10 +46,14 @@ export const SubscriptionsPage: React.FC = () => {
     const subs = useMemo(() => db.subscriptions.filter(s => s.companyId === companyId).sort((a, b) => b.createdAt.localeCompare(a.createdAt)), [db.subscriptions, companyId]);
     const clients = db.clients.filter(c => c.companyId === companyId);
     const services = db.services.filter(s => s.companyId === companyId);
-    const staff = db.staff.filter(s => s.companyId === companyId);
+    const staff = cleanersOf(db, companyId);
     const clientName = (id: string) => clients.find(c => c.id === id)?.name || 'Deleted client';
     const serviceName = (id: string) => services.find(s => s.id === id)?.name || 'Deleted service';
     const subOf = (id: string) => subs.find(s => s.id === id);
+    // Cleaners kept by a subscription during its period, and any two subscriptions that keep the same cleaner at once
+    const reservations = reservationsFor(db, companyId);
+    const clashList = clashes(reservations);
+    const keptText = (r: Reservation) => `kept for ${clientName(r.clientId)} ${untilText(r, d => dayLabel(d))}`;
 
     // The contract a subscription is running on now: not ended and not cancelled
     const contractFor = (subId: string): Contract | undefined =>
@@ -95,6 +101,10 @@ export const SubscriptionsPage: React.FC = () => {
     };
 
     const setStatus = (s: Subscription, status: Subscription['status']) => {
+        if (status === 'active' && s.cleanerId) {
+            const clash = reservedDuring(reservations, s.cleanerId, s.startDate.slice(0, 10), s.endDate ? s.endDate.slice(0, 10) : undefined, s.clientId, s.id)[0];
+            if (clash) { alert(`${staffName(db, s.cleanerId)} is now ${keptText(clash)}, so this subscription cannot be resumed with her. Change the cleaner or the dates first.`); return; }
+        }
         mutateDB(d => { const x = d.subscriptions.find(r => r.id === s.id); if (x) x.status = status; });
         logActivity(companyId, actor, status === 'paused' ? 'Paused a subscription' : 'Resumed a subscription', clientName(s.clientId));
     };
@@ -201,6 +211,19 @@ export const SubscriptionsPage: React.FC = () => {
                 <Kpi label="Still expected" value={fmt0(expected)} unit="QAR" hint={lateAmount ? `${fmt0(lateAmount)} QAR of it is overdue` : 'All on schedule'} />
             </div>
 
+            {clashList.map(([a, b]) => (
+                <div key={`${a.subscriptionId}-${b.subscriptionId}`} className="issue high" role="alert">
+                    <b>{staffName(db, a.cleanerId)} is kept for two clients at the same time</b>
+                    <div className="fix">
+                        {clientName(a.clientId)} ({dayLabel(a.from)}{a.open ? ', no end date' : ` to ${dayLabel(a.to)}`}) and {clientName(b.clientId)} ({dayLabel(b.from)}{b.open ? ', no end date' : ` to ${dayLabel(b.to)}`}).
+                        A cleaner can only be with one client during a plan: change the cleaner or the dates of one of them.
+                    </div>
+                    <div className="toolbar">
+                        {[a, b].map(r => { const sub = subOf(r.subscriptionId); return sub ? <button key={r.subscriptionId} className="btn btn-secondary btn-sm" onClick={() => setForm(sub)}>Edit {clientName(r.clientId)}</button> : null; })}
+                    </div>
+                </div>
+            ))}
+
             <Tabs value={tab} onChange={setTab} tabs={[
                 { id: 'subs', label: 'Subscriptions' }, { id: 'payments', label: late.length ? `Payments (${late.length} late)` : 'Payments' },
                 { id: 'contracts', label: `Contracts (${contracts.length})` }, { id: 'templates', label: 'Templates' },
@@ -213,7 +236,7 @@ export const SubscriptionsPage: React.FC = () => {
                         cols={[
                             { key: 'c', header: 'Client', render: s => <b style={{ fontWeight: 600 }}>{clientName(s.clientId)}</b> },
                             { key: 's', header: 'Service', render: s => serviceName(s.serviceId) },
-                            { key: 'w', header: 'Cleaner', render: s => staffName(db, s.cleanerId) || <span className="tiny">Not assigned</span> },
+                            { key: 'w', header: 'Cleaner', render: s => { const r = reservations.find(x => x.subscriptionId === s.id); const n = staffName(db, s.cleanerId); return n ? <span>{n}{r && <div className="tiny">Kept for this client {untilText(r, d => dayLabel(d))}</div>}</span> : <span className="tiny">Not assigned</span>; } },
                             { key: 'f', header: 'How often', render: s => FREQUENCY_LABEL[s.frequency] },
                             { key: 'p', header: 'Price', render: s => <span>{fmt(s.pricePerVisit)} QAR <span className="tiny">{priceUnit(s.frequency)}</span></span> },
                             { key: 'd', header: 'Period', render: s => <span>{dayLabel(s.startDate.slice(0, 10))}<div className="tiny">{s.endDate ? `to ${dayLabel(s.endDate.slice(0, 10))}` : 'No end date'}</div></span> },
@@ -299,6 +322,7 @@ export const SubscriptionsPage: React.FC = () => {
                 <SubscriptionForm
                     key={form === 'new' ? 'new' : form.id} existing={form === 'new' ? undefined : form}
                     clients={clients} services={services} staff={staff.map(s => ({ id: s.id, name: staffName(db, s.id) }))}
+                    reservations={reservations} clientName={clientName} companyId={companyId}
                     onClose={() => setForm(null)} onSave={f => saveSub(f, form === 'new' ? undefined : form)}
                 />
             )}
@@ -479,14 +503,21 @@ const MonthlyPayments: React.FC<{
 
 const SubscriptionForm: React.FC<{
     existing?: Subscription; clients: { id: string; name: string }[]; services: { id: string; name: string; price: number }[]; staff: { id: string; name: string }[];
+    reservations: Reservation[]; clientName: (id: string) => string; companyId: string;
     onClose: () => void; onSave: (f: SubForm) => void;
-}> = ({ existing, clients, services, staff, onClose, onSave }) => {
+}> = ({ existing, clients, services, staff, reservations, clientName, companyId, onClose, onSave }) => {
+    const db = useDB();
     const [f, setF] = useState<SubForm>(() => existing ? {
         clientId: existing.clientId, serviceId: existing.serviceId, cleanerId: existing.cleanerId || '', frequency: existing.frequency,
         price: String(existing.pricePerVisit), startDate: existing.startDate.slice(0, 10), endDate: existing.endDate ? existing.endDate.slice(0, 10) : '',
         status: existing.status, notes: existing.notes || '',
     } : blankForm());
     const [err, setErr] = useState('');
+    // A cleaner kept for another client during these dates cannot be chosen
+    const keptBy = (cleanerId: string) => (cleanerId && f.startDate
+        ? reservedDuring(reservations, cleanerId, f.startDate, f.endDate || undefined, f.clientId || undefined, existing?.id)[0] : undefined);
+    const keptWords = (r: Reservation) => `${clientName(r.clientId)} ${untilText(r, d => dayLabel(d))}`;
+    const chosenKept = keptBy(f.cleanerId);
 
     const pickService = (serviceId: string) => {
         const old = services.find(s => s.id === f.serviceId), next = services.find(s => s.id === serviceId);
@@ -501,6 +532,17 @@ const SubscriptionForm: React.FC<{
         if (f.price === '' || !Number.isFinite(p) || p < 0) return setErr('Enter the price, for example 150.');
         if (!f.startDate) return setErr('Choose the start date.');
         if (f.endDate && f.endDate < f.startDate) return setErr('The end date cannot be before the start date.');
+        if (chosenKept) return setErr(`${staff.find(s => s.id === f.cleanerId)?.name || 'This cleaner'} is kept for ${keptWords(chosenKept)}. Choose another cleaner, or dates after that.`);
+        // This plan would keep the cleaner too: tell the owner about jobs she already has for other clients in the period
+        if (f.cleanerId && f.status === 'active') {
+            const keeps = reservationsOf([{ id: existing?.id || 'new', clientId: f.clientId, cleanerId: f.cleanerId, frequency: f.frequency, status: 'active', startDate: f.startDate, endDate: f.endDate || undefined }], [], reserveModeOf(getSettings(companyId))).length > 0;
+            if (keeps) {
+                const today = todayStr();
+                const others = db.bookings.filter(b => b.companyId === companyId && b.cleanerId === f.cleanerId && b.clientId !== f.clientId && b.status !== 'cancelled'
+                    && b.date >= f.startDate && b.date >= today && (!f.endDate || b.date <= f.endDate)).sort((a, b) => a.date.localeCompare(b.date));
+                if (others.length && !confirm(`${staff.find(s => s.id === f.cleanerId)?.name} already has ${others.length} booking${others.length > 1 ? 's' : ''} for other clients in this period (the first on ${dayLabel(others[0].date)}). They are not deleted: move them to another cleaner. Save anyway?`)) return;
+            }
+        }
         setErr(''); onSave(f);
     };
     return (
@@ -517,8 +559,9 @@ const SubscriptionForm: React.FC<{
                         <input type="number" min="0" step="any" value={f.price} required onChange={e => setF({ ...f, price: e.target.value })} /></Field>
                     <Field label="Start date" half><input type="date" value={f.startDate} required onChange={e => setF({ ...f, startDate: e.target.value })} /></Field>
                     <Field label="End date" half hint="Leave empty if it continues until someone ends it."><input type="date" value={f.endDate} min={f.startDate} onChange={e => setF({ ...f, endDate: e.target.value })} /></Field>
-                    <Field label="Cleaner" half><select value={f.cleanerId} onChange={e => setF({ ...f, cleanerId: e.target.value })}>
-                        <option value="">Not assigned</option>{staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
+                    <Field label="Cleaner" half hint={chosenKept ? undefined : 'A cleaner kept for another client during these dates is greyed out.'}><select value={f.cleanerId} onChange={e => { setF({ ...f, cleanerId: e.target.value }); setErr(''); }}>
+                        <option value="">Not assigned</option>{staff.map(s => { const k = keptBy(s.id); return <option key={s.id} value={s.id} disabled={!!k && s.id !== f.cleanerId}>{s.name}{k ? ` (kept for ${keptWords(k)})` : ''}</option>; })}</select>
+                        {chosenKept && <small role="alert" style={{ color: 'var(--color-danger)' }}>Kept for {keptWords(chosenKept)}.</small>}</Field>
                     {existing && existing.status !== 'cancelled' && <Field label="Status" half hint="To cancel, use Cancel subscription so the reason is recorded."><select value={f.status} onChange={e => setF({ ...f, status: e.target.value as Subscription['status'] })}>
                         <option value="active">Active</option><option value="paused">Paused</option></select></Field>}
                     <Field label="Notes"><textarea value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} placeholder="Access, keys, special requests" /></Field>
@@ -561,6 +604,10 @@ const ContractModal: React.FC<{
     const sign = () => {
         if (!body.trim()) return setMsg('Write the contract text before signing.');
         if (stale) return setMsg('The subscription changed. Regenerate the contract, or mark it as up to date, then sign.');
+        if (sub?.cleanerId) {
+            const clash = reservedDuring(reservationsFor(db, c.companyId), sub.cleanerId, sub.startDate.slice(0, 10), sub.endDate ? sub.endDate.slice(0, 10) : undefined, sub.clientId, sub.id)[0];
+            if (clash) return setMsg(`${staffName(db, sub.cleanerId)} is kept for ${db.clients.find(x => x.id === clash.clientId)?.name || 'another client'} ${untilText(clash, d => dayLabel(d))}. Change the cleaner or the dates of one subscription before signing.`);
+        }
         const m = Math.floor(Number(planMonths));
         if (!Number.isFinite(m) || m < 0 || m > 60) return setMsg('Months of payments must be between 0 and 60.');
         updateItem('contracts', c.id, {

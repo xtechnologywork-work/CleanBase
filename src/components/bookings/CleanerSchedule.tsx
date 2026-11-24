@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { Booking } from '../../types';
 import { ChevronLeft, ChevronRight, XCircle, MapPin, Clock, CalendarDays, Calendar as CalendarIcon, User, Briefcase, CreditCard, Repeat } from 'lucide-react';
-import { getDB } from '../../services/mockDb';
+import { useDB } from '../../services/erp';
 
 interface Props {
     cleanerId: string;
@@ -22,13 +22,10 @@ export const CleanerSchedule: React.FC<Props> = ({ cleanerId, cleanerName, booki
     const [viewMode, setViewMode] = useState<'day' | 'week'>('week');
     const [currentTime, setCurrentTime] = useState(new Date());
     const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-    const [mockData, setMockData] = useState<{ clients: any[], services: any[], subscriptions: any[] }>({ clients: [], services: [], subscriptions: [] });
+    // Live data, so a client or service edited elsewhere shows up here at once
+    const db = useDB();
+    const mockData = { clients: db.clients, services: db.services, subscriptions: db.subscriptions || [] };
     const scrollRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const db = getDB();
-        setMockData({ clients: db.clients, services: db.services, subscriptions: db.subscriptions || [] });
-    }, []);
 
     // Update current time every minute for the red line
     useEffect(() => {
@@ -45,8 +42,8 @@ export const CleanerSchedule: React.FC<Props> = ({ cleanerId, cleanerName, booki
 
     const cleanerBookings = useMemo(() => bookings.filter(b => b.cleanerId === cleanerId), [bookings, cleanerId]);
     const cleanerSubscriptions = useMemo(() => {
-        return (mockData.subscriptions || []).filter((s: any) => s.cleanerId === cleanerId);
-    }, [mockData.subscriptions, cleanerId]);
+        return (db.subscriptions || []).filter(s => s.cleanerId === cleanerId);
+    }, [db.subscriptions, cleanerId]);
 
     const changeDate = (amount: number) => {
         const newDate = new Date(viewDate);
@@ -189,9 +186,9 @@ export const CleanerSchedule: React.FC<Props> = ({ cleanerId, cleanerName, booki
                             <span>Recurring Client Contracts ({cleanerSubscriptions.length}):</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            {cleanerSubscriptions.map((sub: any) => {
-                                const client = mockData.clients.find((c: any) => c.id === sub.clientId);
-                                const service = mockData.services.find((s: any) => s.id === sub.serviceId);
+                            {cleanerSubscriptions.map(sub => {
+                                const client = mockData.clients.find(c => c.id === sub.clientId);
+                                const service = mockData.services.find(s => s.id === sub.serviceId);
                                 return (
                                     <div key={sub.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.2rem 0.5rem', backgroundColor: '#FFFFFF', border: '1px solid var(--color-border)', borderRadius: '4px', fontSize: '0.75rem' }}>
                                         <strong style={{ color: 'var(--color-text-primary)' }}>{client?.name || 'Client'}</strong>

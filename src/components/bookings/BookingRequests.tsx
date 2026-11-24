@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { MessageCircle } from 'lucide-react';
-import { dayLabel, findConflict, getSettings, logActivity, mutateDB, readCollection, staffName, useCollection, useDB, waDigits } from '../../services/erp';
+import { cleanersOf, dayLabel, findConflict, getSettings, logActivity, mutateDB, readCollection, staffName, useCollection, useDB, waDigits, reservedMessage } from '../../services/erp';
 import { storeLink, toMin, zonedNow } from '../../services/store';
+import { reasonArabic, renderMessage, whatsappUrl } from '../../services/bookingMessages';
+import type { MessageVars } from '../../services/bookingMessages';
 import type { Booking } from '../../types';
 import { Panel, Pill } from '../shared/ui';
 
@@ -22,7 +24,7 @@ export const BookingRequests: React.FC<{ companyId: string; actor: string; onCha
 
     const pending = db.bookings.filter(b => b.companyId === companyId && b.status === 'pending')
         .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-    const staff = db.staff.filter(s => s.companyId === companyId);
+    const staff = cleanersOf(db, companyId);
     const client = (b: Booking) => db.clients.find(c => c.id === b.clientId);
     const service = (b: Booking) => db.services.find(s => s.id === b.serviceId);
     const dur = (b: Booking) => service(b)?.durationMinutes || 120;
@@ -34,16 +36,23 @@ export const BookingRequests: React.FC<{ companyId: string; actor: string; onCha
         if (passed(b)) return 'This time has already passed. Decline it, or agree a new time with the client and edit the booking.';
         if (!c) return 'Choose a cleaner before accepting.';
         if (away(c, b.date)) return `${staffName(db, c)} is on leave that day.`;
+        const kept = reservedMessage(db, companyId, c, b.date, b.clientId, b.subscriptionId);
+        if (kept) return kept;
         const clash = findConflict(db, companyId, c, b.date, b.time, dur(b), b.id);
         return clash ? `${staffName(db, c)} already has a ${clash.status === 'pending' ? 'request' : 'job'} at ${clash.time} that day.` : '';
     };
 
-    const fill = (tpl: string, b: Booking) => tpl.replace(/\{name\}/g, client(b)?.name || '').replace(/\{service\}/g, service(b)?.name || 'cleaning')
-        .replace(/\{date\}/g, dayLabel(b.date)).replace(/\{time\}/g, b.time);
+    const vars = (b: Booking): MessageVars => ({
+        name: client(b)?.name || '', service: service(b)?.name || '', date: b.date, time: b.time, cleaner: staffName(db, b.cleanerId) || '',
+        company: db.companies.find(c => c.id === companyId)?.name || '', address: b.address || '',
+    });
+    const declinedText = (b: Booking) => renderMessage(settings.tplDeclined, {
+        ...vars(b), link: storeLink(companyId), reason: b.cancelReason || '', reasonAr: reasonArabic(b.cancelReason || ''),
+    });
     const whatsapp = (b: Booking, text: string) => {
         const to = waDigits(client(b)?.phone || '');
         if (!to) { alert('This client has no phone number saved.'); return; }
-        window.open(`https://wa.me/${to}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+        window.open(whatsappUrl(to, text), '_blank', 'noopener');
     };
 
     const accept = (b: Booking) => {
@@ -80,8 +89,8 @@ export const BookingRequests: React.FC<{ companyId: string; actor: string; onCha
                             <b>{kind === 'accepted' ? 'Accepted' : 'Declined'}: {client(b!)?.name}, {dayLabel(b!.date)} at {b!.time}</b>
                             <div className="toolbar">
                                 <button className="btn btn-primary btn-sm" onClick={() => whatsapp(b!, kind === 'accepted'
-                                    ? fill(settings.tplConfirmation, b!)
-                                    : `Hello ${client(b!)?.name || ''}, sorry, we cannot take your ${service(b!)?.name || 'cleaning'} on ${dayLabel(b!.date)} at ${b!.time}. ${b!.cancelReason ? `Reason: ${b!.cancelReason}. ` : ''}You can choose another time here: ${storeLink(companyId)}`)}>
+                                    ? renderMessage(settings.tplConfirmation, vars(b!))
+                                    : declinedText(b!))}>
                                     <MessageCircle size={14} /> {kind === 'accepted' ? 'Send confirmation on WhatsApp' : 'Tell the client on WhatsApp'}
                                 </button>
                                 <button className="btn btn-ghost btn-sm" onClick={() => setDone(d => d.filter(x => x.id !== id))}>Dismiss</button>
@@ -105,7 +114,7 @@ export const BookingRequests: React.FC<{ companyId: string; actor: string; onCha
                                 <div className="toolbar">
                                     <select className="input-field" value={chosen(b)} onChange={e => setCleanerFor({ ...cleanerFor, [b.id]: e.target.value })} aria-label="Cleaner" style={{ minWidth: 180 }}>
                                         <option value="">Choose a cleaner</option>
-                                        {staff.map(s => <option key={s.id} value={s.id}>{staffName(db, s.id)}{s.id === b.cleanerId ? (b.source === 'store' ? ' (asked for)' : ' (assigned)') : ''}</option>)}
+                                        {staff.map(s => { const kept = !!reservedMessage(db, companyId, s.id, b.date, b.clientId, b.subscriptionId); return <option key={s.id} value={s.id} disabled={kept}>{staffName(db, s.id)}{s.id === b.cleanerId ? (b.source === 'store' ? ' (asked for)' : ' (assigned)') : ''}{kept ? ' (kept for a subscription)' : ''}</option>; })}
                                     </select>
                                     <button className="btn btn-primary btn-sm" disabled={!!p} title={p || undefined} onClick={() => accept(b)}>Accept</button>
                                     <button className="btn btn-secondary btn-sm" onClick={() => setDeclining({ id: b.id, reason: DECLINE_REASONS[0], note: '' })}>Decline</button>

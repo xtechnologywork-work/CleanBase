@@ -36,6 +36,8 @@ export interface Tenant {
     payments: PlatformPayment[];
     lastPayment?: PlatformPayment;
     paidTotal: number;
+    /** The platform admin's private notes. Never stored in the company row, which the tenant can read. */
+    notes: string;
 }
 
 const daysAgo = (n: number) => format(addDays(new Date(), -n), 'yyyy-MM-dd');
@@ -54,6 +56,7 @@ export function buildTenants(db: MockDatabase): Tenant[] {
     const team = byCompany(users);
     const pays = new Map<string, PlatformPayment[]>();
     (db.platformPayments || []).forEach(p => { const a = pays.get(p.tenantId); if (a) a.push(p); else pays.set(p.tenantId, [p]); });
+    const notes = new Map((db.tenantNotes || []).map(n => [n.tenantId, n.notes]));
 
     return (db.companies || []).map(company => {
         const members = team.get(company.id) || [];
@@ -77,6 +80,7 @@ export function buildTenants(db: MockDatabase): Tenant[] {
                 gmvAll: done.reduce((s, b) => s + b.price, 0), lastActivity: last,
             },
             payments: myPays, lastPayment: myPays[0], paidTotal: myPays.reduce((s, p) => s + p.amount, 0),
+            notes: notes.get(company.id) ?? company.adminNotes ?? '',
         };
     }).sort((a, b) => b.company.createdAt.localeCompare(a.company.createdAt));
 }
@@ -140,7 +144,16 @@ export function updateTenant(companyId: string, patch: Partial<Pick<Company, 'na
     save(db => {
         const co = db.companies.find(c => c.id === companyId);
         if (!co) return;
-        Object.assign(co, patch);
+        const { adminNotes, ...companyPatch } = patch;
+        Object.assign(co, companyPatch);
+        delete co.adminNotes;                       // private notes live in tenantNotes, out of the tenant's reach
+        if (adminNotes !== undefined || 'adminNotes' in patch) {
+            db.tenantNotes = db.tenantNotes || [];
+            const text = (adminNotes || '').trim();
+            const existing = db.tenantNotes.find(n => n.tenantId === companyId);
+            if (existing) existing.notes = text;
+            else if (text) db.tenantNotes.push({ id: `note-${companyId}`, tenantId: companyId, notes: text, createdAt: new Date().toISOString() });
+        }
         name = co.name;
         if (ownerName !== undefined) {
             const owner = db.users.find(u => u.companyId === companyId && u.role === 'companyadmin');
@@ -213,6 +226,7 @@ export function deleteTenant(companyId: string) {
         db.subscriptions = db.subscriptions.filter(r => r.companyId !== companyId);
         db.reviews = db.reviews.filter(r => r.companyId !== companyId);
         db.automations = db.automations.filter(r => r.companyId !== companyId);
+        db.tenantNotes = (db.tenantNotes || []).filter(n => n.tenantId !== companyId);
     });
     ERP.forEach(c => removeWhere(c, r => r.companyId === companyId));
     logAudit(`Deleted tenant ${name} and all of its data`, name, 'warning');

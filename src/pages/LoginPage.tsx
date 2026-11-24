@@ -11,27 +11,21 @@ export const LoginPage: React.FC = () => {
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState('');
 
     React.useEffect(() => {
-        if (isAuthenticated && user) {
-            if (user.role === 'superadmin') {
-                navigate('/admin/overview', { replace: true });
-            } else {
-                navigate('/app', { replace: true });
-            }
-        }
+        if (isAuthenticated && user) navigate(user.role === 'superadmin' ? '/admin/overview' : user.role === 'driver' ? '/driver' : '/app', { replace: true });
     }, [isAuthenticated, user, navigate]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        const loggedUser = await login(email, password);
-        if (loggedUser) {
-            if (loggedUser.role === 'superadmin') {
-                navigate('/admin/overview');
-            } else {
-                navigate('/app');
-            }
-        }
+        if (busy) return;
+        setBusy(true); setError('');
+        const r = await login(email, password);
+        setBusy(false);
+        if (r.user) navigate(r.user.role === 'superadmin' ? '/admin/overview' : r.user.role === 'driver' ? '/driver' : '/app');
+        else setError(r.error || 'Could not sign in. Try again.');
     };
 
     return (
@@ -45,19 +39,13 @@ export const LoginPage: React.FC = () => {
                     <p className="auth-sub">Enter your details to access your dashboard.</p>
 
                     <form className="auth-form" onSubmit={handleLogin}>
+                        {error && <div className="auth-msg is-error" role="alert">{error}</div>}
                         <div className="auth-field">
                             <label htmlFor="login-email">Email address</label>
                             <div className="auth-input">
                                 <Mail size={18} aria-hidden="true" />
-                                <input
-                                    id="login-email"
-                                    type="email"
-                                    placeholder="owner@company.com"
-                                    autoComplete="email"
-                                    value={email}
-                                    onChange={e => setEmail(e.target.value)}
-                                    required
-                                />
+                                <input id="login-email" type="email" placeholder="owner@company.com" autoComplete="email"
+                                    value={email} onChange={e => { setEmail(e.target.value); setError(''); }} required />
                             </div>
                         </div>
 
@@ -65,23 +53,16 @@ export const LoginPage: React.FC = () => {
                             <label htmlFor="login-password">Password</label>
                             <div className="auth-input">
                                 <Lock size={18} aria-hidden="true" />
-                                <input
-                                    id="login-password"
-                                    type="password"
-                                    placeholder="Your password"
-                                    autoComplete="current-password"
-                                    value={password}
-                                    onChange={e => setPassword(e.target.value)}
-                                    required
-                                />
+                                <input id="login-password" type="password" placeholder="Your password" autoComplete="current-password"
+                                    value={password} onChange={e => { setPassword(e.target.value); setError(''); }} required />
                             </div>
                         </div>
 
                         <div className="auth-aside">
-                            <Link to="#">Forgot password?</Link>
+                            <Link to="/forgot-password" state={{ email: email.trim() }}>Forgot password?</Link>
                         </div>
 
-                        <button type="submit" className="lp-btn lp-btn-primary auth-submit">Sign in</button>
+                        <button type="submit" className="lp-btn lp-btn-primary auth-submit" disabled={busy}>{busy ? 'Signing in...' : 'Sign in'}</button>
                     </form>
 
                     <p className="auth-switch">

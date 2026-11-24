@@ -169,7 +169,7 @@ export function findIssues(s: Snapshot, db: MockDatabase, companyId: string, lan
         readCollection('attendance', companyId).filter(a => a.date === s.date && (a.status === 'absent' || a.status === 'leave')).map(a => a.staffId),
     );
     const freeFor = (b: Booking) => db.staff
-        .filter(st => st.companyId === companyId && !absentIds.has(st.id) && ['cleaner', 'driver', 'staff'].includes(db.users.find(u => u.id === st.userId)?.role || ''))
+        .filter(st => st.companyId === companyId && !absentIds.has(st.id) && ['cleaner', 'staff'].includes(db.users.find(u => u.id === st.userId)?.role || ''))
         .filter(st => !findConflict(db, companyId, st.id, b.date, b.time, dur(b)))
         .map(st => staffName(db, st.id));
     const waLink = (phone: string, text: string) => `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;

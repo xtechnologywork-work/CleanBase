@@ -9,7 +9,7 @@ const FIELDS: FieldDef[] = [
     { name: 'date', label: 'Date', type: 'date', required: true, half: true },
     { name: 'category', label: 'Category', type: 'select', required: true, half: true, options: EXPENSE_CATEGORIES.map(c => ({ value: c, label: c })) },
     { name: 'description', label: 'Description', required: true },
-    { name: 'amount', label: 'Amount (QAR)', type: 'number', required: true, half: true },
+    { name: 'amount', label: 'Amount (QAR)', type: 'number', required: true, half: true, min: '0.01' },
     { name: 'vendor', label: 'Vendor or payee', half: true },
 ];
 

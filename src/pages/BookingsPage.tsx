@@ -1,11 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { getDB, saveDB } from '../services/mockDb';
 import type { Booking, BookingStatus, Service, Client, Staff, User, PaymentStatus } from '../types';
 import {
     Plus, Search, Calendar, Clock, Edit2, CheckCircle2,
     LayoutList, CalendarDays, Download,
-    AlertTriangle, Trash2, X
+    AlertTriangle, Trash2, X, MessageCircle, Bell, FileText
 } from 'lucide-react';
+import { addDays, format, parseISO } from 'date-fns';
+import { addItem, dayLabel, findConflict, fmt, getSettings, staffName, invoiceTotal, logActivity, nextNumber, readCollection, reservedMessage, today, updateItem, useDB } from '../services/erp';
+import { DEFAULT_TEMPLATES, renderMessage, STATUS_BUTTON, STATUS_KEY, statusMessage, whatsappDigits, whatsappUrl } from '../services/bookingMessages';
+import type { MessageVars } from '../services/bookingMessages';
 import { useAuth } from '../contexts/AuthContext';
 import { CalendarView } from '../components/bookings/CalendarView';
 import { BookingRequests } from '../components/bookings/BookingRequests';
@@ -18,10 +22,20 @@ const formatLocalDate = (d: Date): string => {
 };
 
 export const BookingsPage: React.FC = () => {
-    const [bookings, setBookings] = useState<Booking[]>([]);
-    const [services, setServices] = useState<Service[]>([]);
-    const [clients, setClients] = useState<Client[]>([]);
-    const [staffList, setStaffList] = useState<(Staff & { user: User })[]>([]);
+    const { user } = useAuth();
+    // Live data: a request from the booking page or a change on another device shows up without a reload
+    const live = useDB();
+    const cid = user?.companyId;
+    // A cleaner or staff member sees only their own jobs and cannot create, edit, delete or export bookings
+    const fieldOnly = user?.role === 'cleaner' || user?.role === 'staff';
+    const ownStaffId = useMemo(() => live.staff.find(s => s.companyId === cid && s.userId === user?.id)?.id, [live, cid, user?.id]);
+    const bookings = useMemo<Booking[]>(() => live.bookings.filter(b => b.companyId === cid && (!fieldOnly || (!!ownStaffId && b.cleanerId === ownStaffId)))
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [live, cid, fieldOnly, ownStaffId]);
+    const services = useMemo<Service[]>(() => live.services.filter(s => s.companyId === cid), [live, cid]);
+    const clients = useMemo<Client[]>(() => live.clients.filter(c => c.companyId === cid), [live, cid]);
+    const staffList = useMemo<(Staff & { user: User })[]>(() => live.staff.filter(s => s.companyId === cid)
+        .map(s => ({ ...s, user: live.users.find(u => u.id === s.userId)! }))
+        .filter(s => s.user !== undefined && s.user.role === 'cleaner'), [live, cid]);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -49,27 +63,8 @@ export const BookingsPage: React.FC = () => {
     };
     const [formData, setFormData] = useState(initialFormState);
 
-    const { user } = useAuth();
-
-    useEffect(() => {
-        if (user?.companyId) {
-            loadData();
-        }
-    }, [user?.companyId]);
-
-    const loadData = () => {
-        if (!user?.companyId) return;
-        const db = getDB();
-        setBookings(db.bookings.filter(b => b.companyId === user.companyId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-        setServices(db.services.filter(s => s.companyId === user.companyId));
-        setClients(db.clients.filter(c => c.companyId === user.companyId));
-
-        const joinedStaff = db.staff.filter(s => s.companyId === user.companyId).map(s => {
-            const u = db.users.find(u => u.id === s.userId);
-            return { ...s, user: u! };
-        }).filter(s => s.user !== undefined && (s.user.role === 'cleaner' || s.user.role === 'driver'));
-        setStaffList(joinedStaff);
-    };
+    // Saving writes to the shared store, which refreshes the live data above
+    const loadData = () => undefined;
 
     const getClient = (id: string) => clients.find(c => c.id === id);
     const getService = (id: string) => services.find(s => s.id === id);
@@ -146,6 +141,20 @@ export const BookingsPage: React.FC = () => {
         e.preventDefault();
         const db = getDB();
 
+        // A cleaner kept by a subscription for another client cannot take this job (unchanged jobs of an existing booking are left alone)
+        if (formData.cleanerId && cid) {
+            const before = editingId ? db.bookings.find(b => b.id === editingId) : undefined;
+            const unchanged = !!before && before.cleanerId === formData.cleanerId && before.date === formData.date;
+            const kept = unchanged ? '' : reservedMessage(db, cid, formData.cleanerId, formData.date, formData.clientId || undefined, before?.subscriptionId);
+            if (kept) { alert(kept); return; }
+            // The same cleaner cannot be in two places at once: warn when this job overlaps another one of hers (same rule as the dispatch board)
+            if (formData.status !== 'cancelled') {
+                const duration = db.services.find(s => s.id === formData.serviceId)?.durationMinutes || 120;
+                const clash = findConflict(db, cid, formData.cleanerId, formData.date, formData.time, duration, editingId || undefined);
+                if (clash && !confirm(`${staffName(db, formData.cleanerId)} already has a job at ${clash.time} that overlaps. Save anyway?`)) return;
+            }
+        }
+
         let resolvedClientId = formData.clientId;
         // If no existing client was picked, create a new client record automatically
         if (!resolvedClientId && formData.clientName.trim()) {
@@ -202,6 +211,69 @@ export const BookingsPage: React.FC = () => {
         setEditingId(null);
     };
 
+    /* ---- WhatsApp messages from the booking window. The text follows what is chosen in the form right now. ---- */
+    const savedBooking = editingId ? bookings.find(b => b.id === editingId) : undefined;
+    const phoneDigits = whatsappDigits(formData.clientPhone);
+    const messageVars = (): MessageVars => {
+        const company = getDB().companies.find(c => c.id === user?.companyId);
+        return {
+            name: formData.clientName.trim(),
+            service: services.find(s => s.id === formData.serviceId)?.name || '',
+            date: formData.date, time: formData.time,
+            cleaner: staffList.find(s => s.id === formData.cleanerId)?.user?.name || '',
+            company: company?.name || '', address: formData.address.trim(),
+        };
+    };
+    const openWhatsApp = (text: string) => {
+        if (!phoneDigits) { alert('Enter a valid phone number for this client first (for example +974 5512 3456).'); return; }
+        window.open(whatsappUrl(phoneDigits, text), '_blank', 'noopener');
+    };
+    const companySettings = () => getSettings(user?.companyId || '');
+    const sendStatusMessage = () => openWhatsApp(statusMessage(formData.status, companySettings(), messageVars()));
+    const sendReminder = () => openWhatsApp(renderMessage(companySettings().tplReminder, messageVars()));
+    // Preview of the message the main button will send, and a one-click way back to the English + Arabic default
+    const [, setTplTick] = useState(0);
+    const statusKey = STATUS_KEY[formData.status];
+    const statusIsDefault = isModalOpen && companySettings()[statusKey] === DEFAULT_TEMPLATES[statusKey];
+    const statusPreview = isModalOpen ? statusMessage(formData.status, companySettings(), messageVars()) : '';
+    const useDefaultMessage = () => {
+        const companyId = user?.companyId;
+        if (!companyId) return;
+        const found = readCollection('settings', companyId)[0];
+        if (found) updateItem('settings', found.id, { [statusKey]: DEFAULT_TEMPLATES[statusKey] });
+        else addItem('settings', companyId, { ...companySettings(), [statusKey]: DEFAULT_TEMPLATES[statusKey] });
+        setTplTick(n => n + 1);
+    };
+    // Unsaved edits that would change the invoice
+    const invoiceDirty = !!savedBooking && (savedBooking.serviceId !== formData.serviceId || savedBooking.date !== formData.date
+        || Number(savedBooking.price) !== Number(formData.price) || savedBooking.status !== formData.status || savedBooking.clientId !== formData.clientId);
+    const sendInvoice = () => {
+        const companyId = user?.companyId;
+        if (!companyId || !savedBooking) return;
+        if (invoiceDirty) { alert('You changed this booking. Save the booking changes first, then send the invoice.'); return; }
+        const settings = companySettings();
+        const all = readCollection('invoices', companyId);
+        let invoice = all.find(i => i.status !== 'cancelled' && i.bookingIds.includes(savedBooking.id));
+        if (!invoice) {
+            if (!clients.some(c => c.id === savedBooking.clientId)) { alert('This booking has no saved client, so an invoice cannot be created.'); return; }
+            const svcName = services.find(s => s.id === savedBooking.serviceId)?.name || 'Cleaning';
+            const ok = window.confirm(`There is no invoice for this booking yet.\n\nCreate one for ${fmt(Number(savedBooking.price))} ${settings.currency} and send it?`);
+            if (!ok) return;
+            const issue = today();
+            invoice = addItem('invoices', companyId, {
+                number: nextNumber(settings.invoicePrefix, all.map(i => i.number)), clientId: savedBooking.clientId, bookingIds: [savedBooking.id],
+                issueDate: issue, dueDate: format(addDays(parseISO(issue), settings.paymentTermsDays), 'yyyy-MM-dd'),
+                items: [{ description: `${svcName} on ${dayLabel(savedBooking.date)}`, qty: 1, price: Number(savedBooking.price) }],
+                discount: 0, taxRate: settings.taxRate, notes: '', status: 'sent',
+            });
+            logActivity(companyId, user?.name || 'Owner', 'Created invoice', invoice.number);
+        }
+        openWhatsApp(renderMessage(settings.tplInvoice, {
+            ...messageVars(), number: invoice.number, amount: invoiceTotal(invoice), currency: settings.currency, due: invoice.dueDate,
+        }));
+    };
+    const noReminder = formData.status === 'completed' || formData.status === 'cancelled';
+
     const handleQuickStatusChange = (bookingId: string, status: BookingStatus) => {
         const db = getDB();
         const index = db.bookings.findIndex(b => b.id === bookingId);
@@ -253,22 +325,21 @@ export const BookingsPage: React.FC = () => {
     };
 
     // Filtered bookings
-    const filteredBookings = useMemo(() => {
-        return bookings.filter(b => {
-            const client = getClient(b.clientId);
-            const cleaner = getCleaner(b.cleanerId);
-            const matchesSearch =
-                (client && client.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                (cleaner && cleaner.user?.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                b.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                b.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const term = searchTerm.toLowerCase();
+    const filteredBookings = bookings.filter(b => {
+        const client = getClient(b.clientId);
+        const cleaner = getCleaner(b.cleanerId);
+        const matchesSearch = !term ||
+            (client?.name || '').toLowerCase().includes(term) ||
+            (cleaner?.user?.name || '').toLowerCase().includes(term) ||
+            (b.address || '').toLowerCase().includes(term) ||
+            b.id.toLowerCase().includes(term);
 
-            const matchesStatus = statusFilter === 'all' || b.status === statusFilter;
-            const matchesCleaner = cleanerFilter === 'all' || b.cleanerId === cleanerFilter;
+        const matchesStatus = statusFilter === 'all' || b.status === statusFilter;
+        const matchesCleaner = cleanerFilter === 'all' || b.cleanerId === cleanerFilter;
 
-            return matchesSearch && matchesStatus && matchesCleaner;
-        });
-    }, [bookings, searchTerm, statusFilter, cleanerFilter, clients, staffList]);
+        return matchesSearch && matchesStatus && matchesCleaner;
+    });
 
     // Metric Calculations
     const todayStr = formatLocalDate(new Date());
@@ -291,7 +362,7 @@ export const BookingsPage: React.FC = () => {
                         Schedule appointments, dispatch field cleaners, track real-time routes, and monitor daily revenue.
                     </p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                {!fieldOnly && <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <button
                         onClick={handleExportCSV}
                         style={{
@@ -319,10 +390,10 @@ export const BookingsPage: React.FC = () => {
                         <Plus size={15} strokeWidth={2.5} />
                         <span>New Booking</span>
                     </button>
-                </div>
+                </div>}
             </div>
 
-            {user?.companyId && <BookingRequests companyId={user.companyId} actor={user.name || 'Owner'} onChange={loadData} />}
+            {user?.companyId && !fieldOnly && <BookingRequests companyId={user.companyId} actor={user.name || 'Owner'} onChange={loadData} />}
 
             {/* 4 Executive Metric Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
@@ -529,9 +600,9 @@ export const BookingsPage: React.FC = () => {
                     staffList={staffList}
                     clients={clients}
                     services={services}
-                    onCreateBooking={openNewModalWithDate}
-                    onEditBooking={handleEdit}
-                    onDeleteBooking={(id) => setBookingToDelete(id)}
+                    onCreateBooking={fieldOnly ? () => undefined : openNewModalWithDate}
+                    onEditBooking={fieldOnly ? () => undefined : handleEdit}
+                    onDeleteBooking={fieldOnly ? () => undefined : (id) => setBookingToDelete(id)}
                 />
             ) : (
                 /* Table Ledger View */
@@ -554,9 +625,9 @@ export const BookingsPage: React.FC = () => {
                             <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.8125rem', margin: '0 0 1rem' }}>
                                 Try resetting filters or create a new booking appointment.
                             </p>
-                            <button className="btn btn-primary" onClick={openNewModal} style={{ fontSize: '0.8125rem' }}>
+                            {!fieldOnly && <button className="btn btn-primary" onClick={openNewModal} style={{ fontSize: '0.8125rem' }}>
                                 <Plus size={14} style={{ marginRight: '0.25rem' }} /> Create Booking
-                            </button>
+                            </button>}
                         </div>
                     ) : (
                         <div style={{ overflowX: 'auto' }}>
@@ -646,7 +717,7 @@ export const BookingsPage: React.FC = () => {
                                                                 ✓ Complete
                                                             </button>
                                                         )}
-                                                        <button
+                                                        {!fieldOnly && <><button
                                                             onClick={() => handleEdit(b)}
                                                             style={{
                                                                 background: '#FFFFFF',
@@ -673,7 +744,7 @@ export const BookingsPage: React.FC = () => {
                                                             title="Delete Booking"
                                                         >
                                                             <Trash2 size={13} />
-                                                        </button>
+                                                        </button></>}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -711,6 +782,41 @@ export const BookingsPage: React.FC = () => {
                             >
                                 <X size={18} />
                             </button>
+                        </div>
+
+                        {/* Message the client on WhatsApp: the first button follows the selected status */}
+                        <div style={{ padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '10px', marginBottom: '1rem' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                <button type="button" className="btn btn-primary" onClick={sendStatusMessage} disabled={!phoneDigits}
+                                    style={{ fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    <MessageCircle size={14} /> {STATUS_BUTTON[formData.status]}
+                                </button>
+                                <button type="button" className="btn btn-secondary" onClick={sendReminder} disabled={!phoneDigits || noReminder}
+                                    title={noReminder ? 'Reminders are for upcoming bookings' : undefined}
+                                    style={{ fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    <Bell size={14} /> Send reminder
+                                </button>
+                                <button type="button" className="btn btn-secondary" onClick={sendInvoice}
+                                    disabled={!phoneDigits || !editingId || formData.status === 'cancelled'}
+                                    title={!editingId ? 'Save the booking first' : formData.status === 'cancelled' ? 'This booking is cancelled' : undefined}
+                                    style={{ fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    <FileText size={14} /> Send invoice
+                                </button>
+                            </div>
+                            <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
+                                {phoneDigits ? 'Opens WhatsApp with the message ready. You press send there.' : 'Add the client\'s phone number to send messages on WhatsApp.'}
+                            </div>
+                            <details style={{ marginTop: '0.5rem' }}>
+                                <summary style={{ cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Preview the message</summary>
+                                <div style={{ marginTop: '0.5rem', padding: '0.75rem', borderRadius: 10, background: 'var(--color-bg-subtle)', fontSize: '0.8125rem', lineHeight: 1.55 }}>
+                                    {statusPreview.split('\n').map((line, i) => <div key={i} dir="auto" style={{ minHeight: '1.55em' }}>{line}</div>)}
+                                </div>
+                                {!statusIsDefault && (
+                                    <button type="button" className="btn btn-ghost btn-sm" onClick={useDefaultMessage} style={{ marginTop: '0.4rem', fontSize: '0.75rem' }}>
+                                        Use the English + Arabic default for this message
+                                    </button>
+                                )}
+                            </details>
                         </div>
 
                         <form onSubmit={handleSubmit}>
@@ -788,9 +894,10 @@ export const BookingsPage: React.FC = () => {
                                         style={{ fontSize: '0.8125rem' }}
                                     >
                                         <option value="">-- No cleaner (Unassigned) --</option>
-                                        {staffList.map(s => (
-                                            <option key={s.id} value={s.id}>{s.user?.name} ★ {s.rating.toFixed(1)}</option>
-                                        ))}
+                                        {staffList.map(s => {
+                                            const kept = !!cid && s.id !== formData.cleanerId && !!reservedMessage(live, cid, s.id, formData.date, formData.clientId || undefined, editingId ? bookings.find(b => b.id === editingId)?.subscriptionId : undefined);
+                                            return <option key={s.id} value={s.id} disabled={kept}>{s.user?.name} ★ {s.rating.toFixed(1)}{kept ? ' (kept for a subscription)' : ''}</option>;
+                                        })}
                                     </select>
                                 </div>
                             </div>

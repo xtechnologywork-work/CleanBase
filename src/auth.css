@@ -56,6 +56,10 @@
 .auth-actions { margin-top: 28px; display: flex; flex-direction: column; gap: 12px; }
 .auth-actions .lp-btn { width: 100%; min-height: 50px; }
 .auth-status { margin-top: 24px; display: inline-flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 14px; border-radius: 9999px; background: var(--color-warning-bg); color: var(--color-warning); font-size: 14px; font-weight: 600; }
+.auth-msg { padding: 12px 14px; border-radius: 12px; font-size: 14px; line-height: 1.45; }
+.auth-msg.is-error { background: rgba(215, 0, 21, 0.08); color: #c4000f; }
+.auth-msg.is-ok { background: rgba(36, 138, 61, 0.1); color: #1d7a34; }
+.auth-hint { font-size: 13px; color: var(--color-text-tertiary); }
 .auth-status i { width: 8px; height: 8px; border-radius: 50%; background: #ff9f0a; display: block; }
 
 /* Shared pill buttons for pages that do not load landing.css */

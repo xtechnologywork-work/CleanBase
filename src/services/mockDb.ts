@@ -1,4 +1,4 @@
-import type { MockDatabase } from '../types';
+import type { Company, MockDatabase } from '../types';
 import { DB_KEY, isCloud } from './backend';
 
 let auditActor = 'Platform admin';
@@ -115,7 +115,7 @@ export const getDB = (): MockDatabase => {
 
     // Backfill subscriptions for mock DB companies
     let migrated = false;
-    db.companies = db.companies.map((c: any) => {
+    db.companies = (db.companies || []).map((c: Company) => {
         // In cloud mode the database is the source of truth: never invent values that would be saved back.
         if (!isCloud && !c.subscriptionPlan) {
             migrated = true;
@@ -134,6 +134,7 @@ export const getDB = (): MockDatabase => {
     if (!db.reviews) { db.reviews = []; migrated = true; }
     if (!db.automations) { db.automations = []; migrated = true; }
     if (!db.platformPayments) { db.platformPayments = []; }
+    if (!db.tenantNotes) { db.tenantNotes = []; }
     if (!db.auditLogs && isCloud) { db.auditLogs = []; }
     if (!db.auditLogs) {
         db.auditLogs = [

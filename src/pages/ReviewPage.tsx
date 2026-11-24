@@ -5,12 +5,14 @@ import { isCloud, sb } from '../services/backend';
 import { dayLabel, readCollection, updateItem } from '../services/erp';
 import { Brand } from '../components/shared/Brand';
 import '../auth.css';
+import { useAppViewport } from '../services/useAppViewport';
 
 interface Info { status: string; company: string; service: string; date: string; cleaner?: string }
 const LABELS = ['', 'Poor', 'Fair', 'Good', 'Very good', 'Excellent'];
 
 /** Public page a customer reaches from the WhatsApp link. No login. The link is the only key and works once. */
 export const ReviewPage: React.FC = () => {
+    useAppViewport();
     const { token = '' } = useParams();
     const [info, setInfo] = useState<Info | null | undefined>(undefined);     // undefined = loading, null = not found
     const [rating, setRating] = useState(0);

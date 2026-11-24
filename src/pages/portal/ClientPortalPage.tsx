@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { getDB, saveDB } from '../../services/mockDb';
 import type { Booking, Client } from '../../types';
 import { Calendar, CreditCard, User, LogOut, CheckCircle2 } from 'lucide-react';
@@ -8,19 +8,10 @@ import { isCloud } from '../../services/backend';
 import { CloudPortal } from './CloudPortal';
 
 const LocalPortal: React.FC = () => {
-    const [client, setClient] = useState<Client | null>(null);
-    const [bookings, setBookings] = useState<Booking[]>([]);
+    // Demo mode only: shows the first client of this browser (the online portal signs the client in by phone)
+    const [client, setClient] = useState<Client | null>(() => getDB().clients[0] || null);
+    const [bookings, setBookings] = useState<Booking[]>(() => { const db = getDB(); const c = db.clients[0]; return c ? db.bookings.filter(b => b.clientId === c.id) : []; });
     const navigate = useNavigate();
-
-    useEffect(() => {
-        // Authenticate as a mock client implicitly. (Usually requires login logic)
-        const db = getDB();
-        const firstClient = db.clients.length > 0 ? db.clients[0] : null;
-        if (firstClient) {
-            setClient(firstClient);
-            setBookings(db.bookings.filter(b => b.clientId === firstClient.id));
-        }
-    }, []);
 
     const payInvoice = (bookingId: string) => {
         const db = getDB();
@@ -111,7 +102,7 @@ const LocalPortal: React.FC = () => {
 
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                                             <div>
-                                                <h4 style={{ fontSize: '1.125rem', marginBottom: '0.25rem' }}>Service ID</h4>
+                                                <h4 style={{ fontSize: '1.125rem', marginBottom: '0.25rem' }}>{getDB().services.find(s => s.id === b.serviceId)?.name || 'Cleaning service'}</h4>
                                                 <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>Total Cost: <strong style={{ color: 'var(--color-text-primary)' }}>{b.price.toFixed(2)} QAR</strong></p>
                                             </div>
 

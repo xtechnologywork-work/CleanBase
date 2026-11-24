@@ -18,14 +18,39 @@ export const RegisterPage: React.FC = () => {
     const [params] = useSearchParams();
     const wanted = params.get('plan');
     const [plan, setPlan] = useState<PlanId>(isPlanId(wanted) && SELLABLE.includes(wanted) ? wanted : 'pro');
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState('');
+    const [notice, setNotice] = useState('');
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
-        const success = await register(email, companyName, plan, password);
-        if (success) {
-            navigate('/app');
-        }
+        if (busy) return;
+        setBusy(true); setError(''); setNotice('');
+        const r = await register(email, companyName, plan, password);
+        setBusy(false);
+        if (r.ok) navigate('/app');
+        else if (r.notice) setNotice(r.notice);
+        else setError(r.error || 'Could not create the account. Try again.');
     };
+    const clear = () => { setError(''); };
+
+    if (notice) {
+        return (
+            <div className="auth">
+                <div className="auth-top"><Link to="/" aria-label="CleanBase home"><Brand size={20} /></Link></div>
+                <main className="auth-main">
+                    <div className="auth-card">
+                        <h1>Check your email</h1>
+                        <div className="auth-msg is-ok" role="status" style={{ marginTop: 18 }}>{notice}</div>
+                        <p className="auth-hint" style={{ marginTop: 14 }}>No email after a few minutes? Look in your spam folder.</p>
+                        <div className="auth-actions">
+                            <Link to="/login" className="lp-btn lp-btn-primary">Go to sign in</Link>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        );
+    }
 
     return (
         <div className="auth">
@@ -37,7 +62,8 @@ export const RegisterPage: React.FC = () => {
                     <h1>Create your account</h1>
                     <p className="auth-sub">Start your 14-day free trial. No credit card required.</p>
 
-                    <form className="auth-form" onSubmit={handleRegister}>
+                    <form className="auth-form" onSubmit={handleRegister} onChange={clear}>
+                        {error && <div className="auth-msg is-error" role="alert">{error}</div>}
                         <div className="auth-field">
                             <label htmlFor="reg-company">Company name{isCloud ? ' (leave blank if you were invited)' : ''}</label>
                             <div className="auth-input">
@@ -81,9 +107,12 @@ export const RegisterPage: React.FC = () => {
                                     autoComplete="new-password"
                                     value={password}
                                     onChange={e => setPassword(e.target.value)}
+                                    minLength={8}
+                                    maxLength={72}
                                     required
                                 />
                             </div>
+                            <span className="auth-hint">At least 8 characters.</span>
                         </div>
 
                         <div className="auth-field">
@@ -103,7 +132,7 @@ export const RegisterPage: React.FC = () => {
                             </div>
                         </div>
 
-                        <button type="submit" className="lp-btn lp-btn-primary auth-submit">Get started</button>
+                        <button type="submit" className="lp-btn lp-btn-primary auth-submit" disabled={busy}>{busy ? 'Creating your account...' : 'Get started'}</button>
                     </form>
 
                     <p className="auth-switch">

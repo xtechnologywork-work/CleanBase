@@ -3,6 +3,10 @@ import { addDays, format, parseISO, startOfYear, subDays } from 'date-fns';
 import { getDB, saveDB } from './mockDb';
 import { ERP_KEY, isCloud } from './backend';
 import type { MockDatabase, UserRole } from '../types';
+import { DEFAULT_TEMPLATES, withTemplates } from './bookingMessages';
+import type { Trip } from './trips';
+import { reservationsOf, reservedOn, reserveModeOf, untilText } from './reservations';
+import type { Reservation } from './reservations';
 
 /* ------------------------------------------------------------------ */
 /*  ERP store: everything the owner needs beyond the core CRM tables.  */
@@ -81,16 +85,34 @@ export interface ReviewRequest extends Base {
     bookingId: string; clientId: string; cleanerId?: string; token: string;
     status: 'sent' | 'submitted' | 'accepted' | 'rejected';
     clientName: string; serviceName: string; serviceDate: string; cleanerName?: string;
+    /** Where the customer was sent: our private page, or the company's Google Maps review link. */
+    channel?: 'private' | 'google';
     sentAt: string; rating?: number; comment?: string; submittedAt?: string; decidedAt?: string;
 }
 export interface Activity extends Base { actor: string; action: string; target?: string }
+/** Opening hours of one weekday. Open or closed, and when it opens and closes (HH:mm). */
+export interface DayHours { open: boolean; start: string; end: string }
+export const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+/** Seven days, Monday first, all open from start to end. */
+export const sameWeek = (start: string, end: string): DayHours[] => WEEKDAY_NAMES.map(() => ({ open: true, start, end }));
+
 export interface BizSettings extends Base {
+    /** Opening hours for each weekday, Monday first. When missing, workStart and workEnd apply to every day. */
+    weekHours?: DayHours[];
     legalName: string; taxId: string; taxRate: number; invoicePrefix: string; invoiceFooter: string;
     paymentTermsDays: number; bankDetails: string; workStart: string; workEnd: string;
     minNoticeHours: number; cancellationHours: number; currency: string;
-    tplConfirmation: string; tplReminder: string; tplInvoice: string; tplReview?: string;
+    tplConfirmation: string; tplReminder: string; tplInvoice: string; tplReview?: string; tplReviewGoogle?: string;
+    /** Review requests: 'google' sends customers to the company's Google Maps review link, 'private' to our own page. */
+    reviewMode?: 'private' | 'google'; googleReviewUrl?: string;
+    /** More WhatsApp messages, English and Arabic. A company that never edited them gets the defaults from bookingMessages. */
+    tplPending?: string; tplInProgress?: string; tplCompleted?: string; tplCancelled?: string; tplDeclined?: string;
     /** Booking store: the company's time zone and how many days ahead clients may book */
     timezone?: string; bookingDays?: number;
+    /** Drivers: minutes from the accommodation to a client (and back). Used to plan when the driver leaves. */
+    travelMinutes?: number;
+    /** Which subscriptions keep their cleaner for the client during the period: 'monthly' (default), 'all' or 'off'. See services/reservations. */
+    reserveCleaners?: 'monthly' | 'all' | 'off';
 }
 
 /** A contract the company wrote once and reuses. The body holds {placeholders} that are filled for each client. */
@@ -115,7 +137,12 @@ export interface Contract extends Base {
     installments?: Installment[];
 }
 
+/** Where cleaners live. The driver picks them up there before a job and brings them back after. */
+export interface Accommodation extends Base { name: string; address: string; mapUrl?: string; notes?: string }
+export type { Trip, TripStage, TripEvent } from './trips';
+
 export interface Collections {
+    trips: Trip; accommodations: Accommodation;
     invoices: Invoice; payments: Payment; expenses: Expense; zones: Zone; vehicles: Vehicle; supplies: Supply;
     supplyUsage: SupplyUsage; jobMeta: JobMeta; staffMeta: StaffMeta; staffDocs: StaffDoc; attendance: Attendance;
     leave: Leave; payroll: Payroll; leads: Lead; quotes: Quote; complaints: Complaint; promos: Promo;
@@ -223,28 +250,25 @@ export function useDB(): MockDatabase {
 
 /* ------------------------------ settings ------------------------------ */
 
-export const DEFAULT_REVIEW_TEMPLATE = 'Hello {name}, thank you for choosing {company}. How was your {service} on {date}? Rate it in one minute here: {link}';
+export const DEFAULT_REVIEW_TEMPLATE: string = DEFAULT_TEMPLATES.tplReview;
 
 export const defaultSettings = (companyId: string): BizSettings => ({
     id: `set-${companyId}`, companyId, createdAt: '2000-01-01T00:00:00.000Z',
     legalName: '', taxId: '', taxRate: 0, invoicePrefix: 'INV', invoiceFooter: 'Thank you for choosing us.',
     paymentTermsDays: 7, bankDetails: '', workStart: '07:00', workEnd: '19:00', minNoticeHours: 12, cancellationHours: 24,
     currency: 'QAR',
-    tplConfirmation: 'Hello {name}, your {service} is booked for {date} at {time}. See you then!',
-    tplReminder: 'Reminder: your cleaning is tomorrow at {time}. Reply to reschedule.',
-    tplInvoice: 'Hello {name}, invoice {number} for {amount} is ready. Due {due}. Thank you!',
-    tplReview: DEFAULT_REVIEW_TEMPLATE,
+    ...DEFAULT_TEMPLATES,
 });
 export function useSettings(companyId?: string) {
     const { items, add, update } = useCollection('settings', companyId);
-    const current = items[0] || defaultSettings(companyId || '');
+    const current = withTemplates(items[0] || defaultSettings(companyId || ''));
     const save = (patch: Partial<BizSettings>) => {
         if (items[0]) update(items[0].id, patch); else add({ ...current, ...patch });
     };
     return { settings: current, save };
 }
-export const getSettings = (companyId: string): BizSettings =>
-    readCollection('settings', companyId)[0] || defaultSettings(companyId);
+export const getSettings = (companyId: string) =>
+    withTemplates(readCollection('settings', companyId)[0] || defaultSettings(companyId));
 
 /* ------------------------------ formatting ---------------------------- */
 
@@ -266,10 +290,15 @@ export function downloadCsv(filename: string, rows: Record<string, string | numb
     URL.revokeObjectURL(url);
 }
 
+/** Text typed by people (a client name from the public booking page, an address...) must be escaped before it goes into HTML. */
+export const escHtml = (v: unknown): string =>
+    String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+/** Opens a print window. `body` is trusted markup: every value typed by a person inside it must go through escHtml. */
 export function printHtml(title: string, body: string) {
     const w = window.open('', '_blank', 'width=820,height=900');
     if (!w) { alert('Allow pop-ups to print.'); return; }
-    w.document.write(`<!doctype html><title>${title}</title><style>
+    w.document.write(`<!doctype html><meta charset="utf-8"><title>${escHtml(title)}</title><style>
     body{font:15px/1.5 Inter,system-ui,sans-serif;color:#1d1d1f;margin:40px}h1{font-size:28px;letter-spacing:-.03em;margin:0 0 4px}
     table{width:100%;border-collapse:collapse;margin:20px 0}th,td{padding:10px 8px;text-align:left;border-bottom:1px solid #e8e8ed}
     th{font-size:13px;color:#6e6e73}td.r,th.r{text-align:right}.muted{color:#6e6e73}.tot{display:flex;justify-content:space-between;max-width:280px;margin-left:auto;padding:4px 0}
@@ -361,6 +390,25 @@ export function nextNumber(prefix: string, existing: string[]) {
 
 export const toMinutes = (t: string) => { const [h, m] = (t || '0:0').split(':').map(Number); return h * 60 + (m || 0); };
 export const minutesToTime = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+
+/** Every cleaner kept by a subscription today, by the company's own rule. */
+export function reservationsFor(db: MockDatabase, companyId: string): Reservation[] {
+    return reservationsOf(db.subscriptions.filter(s => s.companyId === companyId), readCollection('contracts', companyId), reserveModeOf(getSettings(companyId)));
+}
+
+/**
+ * Why a cleaner cannot take a job on this day because a subscription keeps her for another client ('' when she can).
+ * The client who owns the subscription, and the subscription's own visits, are never blocked.
+ */
+export function reservedMessage(db: MockDatabase, companyId: string, cleanerId: string, date: string, clientId?: string, subscriptionId?: string): string {
+    const r = reservedOn(reservationsFor(db, companyId), cleanerId, date, clientId, subscriptionId);
+    if (!r) return '';
+    return `${staffName(db, cleanerId)} is kept for ${db.clients.find(c => c.id === r.clientId)?.name || 'another client'} ${untilText(r, d => dayLabel(d))}, so she cannot take this job.`;
+}
+
+/** The team members who clean: everyone on the team except the drivers, who have their own pages and are never given a cleaning job. */
+export const cleanersOf = (db: MockDatabase, companyId: string) =>
+    db.staff.filter(s => s.companyId === companyId && db.users.find(u => u.id === s.userId)?.role !== 'driver');
 
 export function findConflict(db: MockDatabase, companyId: string, cleanerId: string, date: string, time: string, duration: number, excludeId?: string) {
     const start = toMinutes(time), end = start + duration;

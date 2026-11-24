@@ -151,7 +151,7 @@ const TenantDetail: React.FC<{ t: Tenant; tenants: Tenant[]; onEnter: () => void
     const [plan, setPlan] = useState<Plan>(t.plan);
     const [mrr, setMrr] = useState(String(t.mrr));
     const [license, setLicense] = useState(t.licenseUntil || '');
-    const [notes, setNotes] = useState(t.company.adminNotes || '');
+    const [notes, setNotes] = useState(t.notes);
     const [saved, setSaved] = useState(false);
     const [paying, setPaying] = useState(false);
     const [confirmName, setConfirmName] = useState('');
@@ -160,7 +160,7 @@ const TenantDetail: React.FC<{ t: Tenant; tenants: Tenant[]; onEnter: () => void
     const save = () => {
         if (!name.trim()) return alert('The company needs a name.');
         updateTenant(t.company.id, {
-            name: name.trim(), subscriptionPlan: plan, monthlyRevenue: Number(mrr) || 0, licenseUntil: license || undefined, adminNotes: notes || undefined,
+            name: name.trim(), subscriptionPlan: plan, monthlyRevenue: Number(mrr) || 0, licenseUntil: license || undefined, adminNotes: notes,
         }, ownerName);
         setSaved(true); setTimeout(() => setSaved(false), 2000);
     };

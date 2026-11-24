@@ -24,13 +24,20 @@ exception when others then
 end $do$;
 
 -- Live updates: other users see changes without refreshing. Row level security still applies to the data.
+-- One block per table: a table that is already published must not stop the other one from being added.
 do $do$
 begin
     alter publication supabase_realtime add table public.records;
+exception
+    when duplicate_object then null;
+    when others then raise notice 'Realtime setup skipped for records: %', sqlerrm;
+end $do$;
+do $do$
+begin
     alter publication supabase_realtime add table public.profiles;
 exception
     when duplicate_object then null;
-    when others then raise notice 'Realtime setup skipped: %', sqlerrm;
+    when others then raise notice 'Realtime setup skipped for profiles: %', sqlerrm;
 end $do$;
 
 -- Hourly automations (recurring bookings, overdue, expiry and stock notifications). Needs pg_cron.

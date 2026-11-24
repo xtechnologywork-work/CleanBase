@@ -1,33 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { getDB } from '../services/mockDb';
+import React, { useMemo } from 'react';
 import type { Review, Client, Staff, User } from '../types';
 import { Star, MessageCircle, StarHalf } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useDB } from '../services/erp';
 
 export const ReviewsPage: React.FC = () => {
-    const [reviews, setReviews] = useState<Review[]>([]);
-    const [clients, setClients] = useState<Client[]>([]);
-    const [staffList, setStaffList] = useState<(Staff & { user: User })[]>([]);
     const { user } = useAuth();
-
-    useEffect(() => {
-        if (user?.companyId) {
-            loadData();
-        }
-    }, [user?.companyId]);
-
-    const loadData = () => {
-        if (!user?.companyId) return;
-        const db = getDB();
-        setReviews(db.reviews?.filter(r => r.companyId === user.companyId) || []);
-        setClients(db.clients.filter(c => c.companyId === user.companyId));
-
-        const joinedStaff = db.staff.filter(s => s.companyId === user.companyId).map(s => {
-            const u = db.users.find(u => u.id === s.userId);
-            return { ...s, user: u! };
-        }).filter(s => s.user !== undefined);
-        setStaffList(joinedStaff);
-    };
+    const cid = user?.companyId;
+    // Live data: a review accepted a moment ago shows up at once
+    const live = useDB();
+    const reviews = useMemo<Review[]>(() => (live.reviews || []).filter(r => r.companyId === cid), [live, cid]);
+    const clients = useMemo<Client[]>(() => live.clients.filter(c => c.companyId === cid), [live, cid]);
+    const staffList = useMemo<(Staff & { user: User })[]>(() => live.staff.filter(s => s.companyId === cid)
+        .map(s => ({ ...s, user: live.users.find(u => u.id === s.userId)! })).filter(s => s.user !== undefined), [live, cid]);
 
     const getClientName = (id: string) => clients.find(c => c.id === id)?.name || 'Guest';
     const getCleanerName = (id: string) => staffList.find(s => s.id === id)?.user?.name || 'Unknown';

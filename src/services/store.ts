@@ -1,5 +1,7 @@
 import { getDB, saveDB } from './mockDb';
-import { getSettings, readCollection } from './erp';
+import { getSettings, readCollection, reservationsFor } from './erp';
+import type { DayHours } from './erp';
+import { isHex } from './branding';
 import type { Booking } from '../types';
 
 /* -------------------------------------------------------------------------- */
@@ -9,11 +11,12 @@ import type { Booking } from '../types';
 
 export interface StoreService { id: string; name: string; description: string; price: number; durationMinutes: number }
 export interface StoreCleaner { id: string; name: string; photo?: string; rating?: number }
-export interface StoreRules { workStart: string; workEnd: string; minNoticeHours: number; timezone: string; bookingDays: number }
+export interface StoreRules { workStart: string; workEnd: string; minNoticeHours: number; timezone: string; bookingDays: number; /** Opening hours per weekday, Monday first */ week?: DayHours[] | null }
 /** A time a cleaner is already taken, in minutes from midnight. Nothing about the client is included. */
 export interface Busy { cleanerId: string; date: string; start: number; end: number }
 export interface Away { cleanerId: string; start: string; end: string }
-export interface StoreData { company: { id: string; name: string }; services: StoreService[]; cleaners: StoreCleaner[]; rules: StoreRules; busy: Busy[]; away: Away[] }
+export interface StoreCompany { id: string; name: string; logo?: string; primaryColor?: string; accentColor?: string; tagline?: string }
+export interface StoreData { company: StoreCompany; services: StoreService[]; cleaners: StoreCleaner[]; rules: StoreRules; busy: Busy[]; away: Away[] }
 export interface Slot { time: string; cleanerIds: string[] }
 
 export const SLOT_STEP = 30;
@@ -36,12 +39,25 @@ export function zonedNow(timezone: string, at = new Date()): { date: string; min
     try { return read(timezone || DEFAULT_TIMEZONE); } catch { return read(DEFAULT_TIMEZONE); }
 }
 
+/** Opening hours on a date (yyyy-MM-dd): when the company opens and closes that weekday, or null when it is closed. */
+export function dayHours(r: StoreRules, date: string): { start: string; end: string } | null {
+    const w = r.week;
+    if (Array.isArray(w) && w.length === 7) {
+        const e = w[(new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7];     // Monday = 0
+        if (!e || e.open === false) return null;
+        const start = /^\d{2}:\d{2}$/.test(e.start) ? e.start : r.workStart, end = /^\d{2}:\d{2}$/.test(e.end) ? e.end : r.workEnd;
+        return toMin(end) > toMin(start) ? { start, end } : null;
+    }
+    return { start: r.workStart, end: r.workEnd };
+}
+
 const isAway = (d: StoreData, cleanerId: string, date: string) => d.away.some(a => a.cleanerId === cleanerId && a.start <= date && date <= a.end);
 export const isFree = (d: StoreData, cleanerId: string, date: string, start: number, end: number) =>
     !isAway(d, cleanerId, date) && !d.busy.some(b => b.cleanerId === cleanerId && b.date === date && start < b.end && b.start < end);
 
-/** Free start times on one day for a service, for one cleaner or for anyone ('any'). */
-export function slotsOn(d: StoreData, serviceId: string, cleanerId: string, date: string, now = zonedNow(d.rules.timezone)): Slot[] {
+/** Every start time of the day for a service, free or not. `reason` says why a time cannot be booked. */
+export interface DaySlot extends Slot { free: boolean; reason?: 'past' | 'taken' }
+export function daySlots(d: StoreData, serviceId: string, cleanerId: string, date: string, now = zonedNow(d.rules.timezone)): DaySlot[] {
     const svc = d.services.find(s => s.id === serviceId);
     if (!svc) return [];
     const dur = svc.durationMinutes > 0 ? svc.durationMinutes : 120;
@@ -51,14 +67,21 @@ export function slotsOn(d: StoreData, serviceId: string, cleanerId: string, date
     const earliest = now.minutes + Math.max(0, d.rules.minNoticeHours) * 60;
     const eDay = Math.floor(earliest / 1440), eMin = earliest % 1440;
     const ids = cleanerId === 'any' ? d.cleaners.map(c => c.id) : [cleanerId];
-    const ws = toMin(d.rules.workStart), we = toMin(d.rules.workEnd);
-    const out: Slot[] = [];
+    const hrs = dayHours(d.rules, date);
+    if (!hrs) return [];                                           // closed that weekday
+    const ws = toMin(hrs.start), we = toMin(hrs.end);
+    const out: DaySlot[] = [];
     for (let t = ws; t + dur <= we; t += SLOT_STEP) {
-        if (k < eDay || (k === eDay && t < eMin)) continue;
+        if (k < eDay || (k === eDay && t < eMin)) { out.push({ time: toTime(t), cleanerIds: [], free: false, reason: 'past' }); continue; }
         const free = ids.filter(id => isFree(d, id, date, t, t + dur));
-        if (free.length) out.push({ time: toTime(t), cleanerIds: free });
+        out.push(free.length ? { time: toTime(t), cleanerIds: free, free: true } : { time: toTime(t), cleanerIds: [], free: false, reason: 'taken' });
     }
     return out;
+}
+
+/** Free start times on one day for a service, for one cleaner or for anyone ('any'). */
+export function slotsOn(d: StoreData, serviceId: string, cleanerId: string, date: string, now = zonedNow(d.rules.timezone)): Slot[] {
+    return daySlots(d, serviceId, cleanerId, date, now).filter(s => s.free).map(({ time, cleanerIds }) => ({ time, cleanerIds }));
 }
 
 /** The first day (from today) a cleaner, or anyone, has a free time for this service. */
@@ -82,7 +105,13 @@ export function localStoreData(companyId: string): StoreData | null {
     const svcDur = (id: string) => db.services.find(x => x.id === id)?.durationMinutes || 120;
     const today = zonedNow(s.timezone || DEFAULT_TIMEZONE).date;
     return {
-        company: { id: company.id, name: company.name },
+        company: {
+            id: company.id, name: company.name,
+            logo: company.logo?.startsWith('data:image/') ? company.logo : undefined,
+            primaryColor: isHex(company.brandColor) ? company.brandColor : undefined,
+            accentColor: isHex(company.brandAccent) ? company.brandAccent : undefined,
+            tagline: company.tagline?.trim().slice(0, 80) || undefined,
+        },
         services: db.services.filter(x => x.companyId === companyId && x.online !== false)
             .map(x => ({ id: x.id, name: x.name, description: x.description || '', price: Number(x.price) || 0, durationMinutes: x.durationMinutes || 120 }))
             .sort((a, b) => a.name.localeCompare(b.name)),
@@ -94,12 +123,17 @@ export function localStoreData(companyId: string): StoreData | null {
         rules: rulesFrom(s),
         busy: db.bookings.filter(b => b.companyId === companyId && b.status !== 'cancelled' && b.cleanerId && b.date >= addDaysStr(today, -1) && /^\d{1,2}:\d{2}/.test(b.time || ''))
             .map(b => ({ cleanerId: b.cleanerId!, date: b.date, start: toMin(b.time), end: toMin(b.time) + svcDur(b.serviceId) })),
-        away: readCollection('leave', companyId).filter(l => l.status === 'approved').map(l => ({ cleanerId: l.staffId, start: l.start, end: l.end })),
+        // leave, and cleaners kept by a subscription (shown as away to everyone else for the whole period)
+        away: [
+            ...readCollection('leave', companyId).filter(l => l.status === 'approved').map(l => ({ cleanerId: l.staffId, start: l.start, end: l.end })),
+            ...reservationsFor(db, companyId).map(r => ({ cleanerId: r.cleanerId, start: r.from, end: r.to })),
+        ],
     };
 }
 
-export const rulesFrom = (s: { workStart?: string; workEnd?: string; minNoticeHours?: number; timezone?: string; bookingDays?: number }): StoreRules => ({
+export const rulesFrom = (s: { workStart?: string; workEnd?: string; minNoticeHours?: number; timezone?: string; bookingDays?: number; weekHours?: DayHours[] }): StoreRules => ({
     workStart: s.workStart || '07:00', workEnd: s.workEnd || '19:00',
+    week: Array.isArray(s.weekHours) && s.weekHours.length === 7 ? s.weekHours : null,
     minNoticeHours: Number.isFinite(Number(s.minNoticeHours)) ? Number(s.minNoticeHours) : 12,
     timezone: s.timezone || DEFAULT_TIMEZONE, bookingDays: Number(s.bookingDays) > 0 ? Number(s.bookingDays) : 60,
 });
@@ -117,6 +151,7 @@ export function checkRequest(d: StoreData, r: StoreRequest): string {
     if (r.notes.length > 500) return 'The note is too long.';
     if (!d.services.some(s => s.id === r.serviceId)) return 'This service is not available.';
     if (!d.cleaners.some(c => c.id === r.cleanerId)) return 'This cleaner is not available.';
+    if (!dayHours(d.rules, r.date)) return 'We are closed on that day.';
     const ok = slotsOn(d, r.serviceId, r.cleanerId, r.date).some(s => s.time === r.time);
     return ok ? '' : 'This time was just taken. Please choose another time.';
 }

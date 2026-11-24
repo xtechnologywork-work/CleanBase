@@ -129,3 +129,39 @@ test('insights: unique visitors per step, live visitors and conversion inputs', 
     assert.equal(r.requests, 3);                       // the three store bookings saved in the test above
     assert.equal(I.localInsights('c9', 30, Date.now() + 5 * 60 * 1000).activeNow, 0);   // 5 minutes later nobody is live
 });
+
+test('opening hours per weekday: closed days, short days and the fallback', () => {
+    // 11 March 2027 is a Thursday, 12 March a Friday
+    const week = Array.from({ length: 7 }, () => ({ open: true, start: '08:00', end: '18:00' }));
+    week[3] = { open: false, start: '08:00', end: '18:00' };       // Thursday closed
+    week[4] = { open: true, start: '10:00', end: '14:00' };        // Friday 10:00 to 14:00
+    const d = base({ rules: { ...base().rules, week } });
+
+    assert.equal(S.dayHours(d.rules, '2027-03-11'), null);
+    assert.deepEqual(S.dayHours(d.rules, '2027-03-12'), { start: '10:00', end: '14:00' });
+    assert.deepEqual(S.dayHours(d.rules, '2027-03-13'), { start: '08:00', end: '18:00' });       // Saturday
+    assert.equal(S.slotsOn(d, 's2h', 'A', '2027-03-11', NOW).length, 0);                           // closed: no times
+    assert.equal(S.daySlots(d, 's2h', 'A', '2027-03-11', NOW).length, 0);
+    assert.deepEqual(S.slotsOn(d, 's2h', 'A', '2027-03-12', NOW).map(s => s.time), ['10:00', '10:30', '11:00', '11:30', '12:00']);   // 12:00 + 2h = 14:00
+    assert.equal(S.slotsOn(d, 's5h', 'A', '2027-03-12', NOW).length, 0);                           // 5h does not fit in a 4h day
+
+    // A closed Wednesday (10 March) has no times either
+    const noWed = base({ rules: { ...base().rules, week: week.map((w, i) => (i === 2 ? { ...w, open: false } : w)) } });
+    assert.equal(S.slotsOn(noWed, 's2h', 'A', '2027-03-10', NOW).length, 0);
+
+    // The check the server also runs (a closed day is refused before anything else about the time)
+    const req = { serviceId: 's2h', cleanerId: 'A', date: '2027-03-11', time: '10:00', name: 'Zed', phone: '+974 5550 9999', address: 'Pearl Tower', notes: '' };
+    assert.equal(S.checkRequest(d, req), 'We are closed on that day.');
+
+    // No week (or a broken one): one start and end for every day, as before
+    for (const rules of [base().rules, { ...base().rules, week: null }, { ...base().rules, week: [week[0]] }]) {
+        assert.deepEqual(S.dayHours(rules, '2027-03-11'), { start: '08:00', end: '18:00' });
+    }
+    // Settings with a week become rules
+    const r = S.rulesFrom({ workStart: '09:00', workEnd: '17:00', weekHours: week });
+    assert.equal(r.week.length, 7);
+    assert.equal(S.rulesFrom({ workStart: '09:00', workEnd: '17:00', weekHours: [week[0]] }).week, null);
+    // A day where closing is not after opening counts as closed
+    const odd = base({ rules: { ...base().rules, week: week.map((w, i) => (i === 5 ? { open: true, start: '18:00', end: '08:00' } : w)) } });
+    assert.equal(S.dayHours(odd.rules, '2027-03-13'), null);
+});

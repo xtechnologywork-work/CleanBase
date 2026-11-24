@@ -7,6 +7,9 @@ import {
     DEFAULT_REVIEW_TEMPLATE,
 } from '../services/erp';
 import type { ReviewRequest } from '../services/erp';
+import { DEFAULT_TEMPLATES, renderMessage, whatsappUrl } from '../services/bookingMessages';
+import { reviewTarget } from '../services/googleReview';
+import { Link } from 'react-router-dom';
 import { Empty, Kpi, Panel, Pill, Table, Tabs } from '../components/shared/ui';
 import { ReviewsPage } from './ReviewsPage';
 
@@ -53,7 +56,7 @@ export const ReviewsHub: React.FC = () => {
         const b = db.bookings.find(x => x.id === bookingId);
         if (!b) return null;
         return addItem('reviewRequests', companyId, {
-            bookingId: b.id, clientId: b.clientId, cleanerId: b.cleanerId, token: newReviewToken(), status: 'sent',
+            bookingId: b.id, clientId: b.clientId, cleanerId: b.cleanerId, token: newReviewToken(), status: 'sent', channel: target.mode,
             clientName: db.clients.find(c => c.id === b.clientId)?.name || 'Client',
             serviceName: db.services.find(s => s.id === b.serviceId)?.name || 'Cleaning',
             serviceDate: b.date, cleanerName: b.cleanerId ? (staffName(db, b.cleanerId) || '').split(' ')[0] : undefined,
@@ -61,10 +64,13 @@ export const ReviewsHub: React.FC = () => {
         });
     };
 
-    const message = (r: ReviewRequest, name: string) =>
-        (settings.tplReview || DEFAULT_REVIEW_TEMPLATE)
-            .replace('{name}', name).replace('{company}', company?.name || 'us').replace('{service}', r.serviceName)
-            .replace('{date}', dayLabel(r.serviceDate)).replace('{link}', reviewLink(r.token));
+    // Google Maps when it is switched on and the saved link is valid, otherwise our private page
+    const target = reviewTarget(settings);
+    const linkFor = (r: ReviewRequest) => (target.mode === 'google' ? target.url : reviewLink(r.token));
+    const message = (r: ReviewRequest, name: string) => renderMessage(
+        target.mode === 'google' ? (settings.tplReviewGoogle || DEFAULT_TEMPLATES.tplReviewGoogle) : (settings.tplReview || DEFAULT_REVIEW_TEMPLATE), {
+            name, company: company?.name || '', service: r.serviceName, date: r.serviceDate, time: '', cleaner: r.cleanerName || '', address: '', link: linkFor(r),
+        });
 
     const sendWhatsApp = (bookingId: string) => {
         const b = db.bookings.find(x => x.id === bookingId);
@@ -73,13 +79,14 @@ export const ReviewsHub: React.FC = () => {
         if (!digits) return alert('This client has no phone number saved.');
         const r = ensureRequest(bookingId);
         if (!r) return;
-        window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message(r, client?.name || ''))}`, '_blank', 'noopener');
-        logActivity(companyId, actor, 'Sent a review request', `${client?.name} ${r.serviceDate}`);
+        if (r.channel !== target.mode) updateItem('reviewRequests', r.id, { channel: target.mode });
+        window.open(whatsappUrl(digits, message(r, client?.name || '')), '_blank', 'noopener');
+        logActivity(companyId, actor, target.mode === 'google' ? 'Sent a Google review request' : 'Sent a review request', `${client?.name} ${r.serviceDate}`);
     };
     const copyLink = (bookingId: string) => {
         const r = ensureRequest(bookingId);
         if (!r) return;
-        void navigator.clipboard.writeText(reviewLink(r.token));
+        void navigator.clipboard.writeText(linkFor(r));
         setCopied(bookingId); setTimeout(() => setCopied(''), 1500);
     };
 
@@ -115,14 +122,24 @@ export const ReviewsHub: React.FC = () => {
             ]} />
 
             {tab === 'ask' && (
-                <Panel title="Latest finished jobs" subtitle="Send the customer a private link on WhatsApp. They rate the job there, and you decide what gets published.">
+                <Panel title="Latest finished jobs" subtitle={target.mode === 'google'
+                    ? 'Send the customer your Google Maps review link on WhatsApp. They leave a real review on your Google page.'
+                    : 'Send the customer a private link on WhatsApp. They rate the job there, and you decide what gets published.'}>
+                    <div className="tiny" style={{ marginBottom: 10 }}>
+                        {target.mode === 'google'
+                            ? <>Reviews go to Google Maps. You can change this in <Link to="/app/settings">Settings, Reviews</Link>.</>
+                            : <>Want real reviews on Google Maps? Add your Google review link in <Link to="/app/settings">Settings, Reviews</Link>.</>}
+                    </div>
                     <Table
                         rows={jobs}
                         empty="No finished jobs in the last 45 days. Once a job is marked finished it appears here."
                         cols={[
                             { key: 'd', header: 'Job', render: b => <div><b style={{ fontWeight: 600 }}>{db.clients.find(c => c.id === b.clientId)?.name || 'Client'}</b><div className="tiny">{db.services.find(s => s.id === b.serviceId)?.name || 'Cleaning'} · {dayLabel(b.date)}</div></div> },
                             { key: 'c', header: 'Cleaner', render: b => (b.cleanerId ? staffName(db, b.cleanerId) : '') || '-' },
-                            { key: 's', header: 'Review', render: b => { const st = requestFor(b.id)?.status || 'none'; return <Pill tone={STATE[st].tone}>{STATE[st].label}</Pill>; } },
+                            { key: 's', header: 'Review', render: b => {
+                                const req = requestFor(b.id); const st = req?.status || 'none';
+                                return <Pill tone={STATE[st].tone}>{st === 'sent' && req?.channel === 'google' ? 'Google link sent' : STATE[st].label}</Pill>;
+                            } },
                             { key: 'a', header: '', align: 'r', render: b => {
                                 const r = requestFor(b.id);
                                 const phone = db.clients.find(c => c.id === b.clientId)?.phone;

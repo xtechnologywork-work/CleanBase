@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Send, Sparkles } from 'lucide-react';
+import { Bell, Clock, Eye, FileText, MessageCircle, Send } from 'lucide-react';
 import { fmt0, useDB } from '../services/erp';
 import { buildSnapshot, dailyReport, detectLang, findIssues, modelContext, respond } from '../services/aiManager';
 import type { Action, Lang, Reply } from '../services/aiManager';
@@ -54,21 +54,34 @@ export const AiManagerPage: React.FC = () => {
     useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [msgs, thinking]);
 
     if (!allowed) {
+        const interest = `${WHATSAPP}?text=${encodeURIComponent('Hello, I would like to hear when the CleanBase AI Manager is ready.')}`;
         return (
             <div className="pg">
-                <PageHeader title="AI Manager" subtitle="A manager that reads your real bookings, money and team, and tells you what matters." />
-                <Panel title="The AI Manager is part of CleanBase AI Master">
-                    <div className="stack">
-                        <p className="muted" style={{ fontSize: '1.0625rem', maxWidth: '40em' }}>{PLANS.ai_master.tagline}</p>
-                        <ul style={{ paddingLeft: '1.1rem', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            {PLANS.ai_master.features.map(f => <li key={f}>{f}</li>)}
-                        </ul>
-                        <div className="toolbar">
-                            <a className="btn btn-primary" href={WHATSAPP} target="_blank" rel="noopener noreferrer"><Sparkles size={15} /> Talk to us about AI Master</a>
-                            <span className="tiny">Your current plan: {PLANS[company?.subscriptionPlan || 'pro']?.name || 'none'}</span>
+                <section className="soon" aria-labelledby="soon-title">
+                    <div className="soon-copy">
+                        <span className="soon-tag"><Clock size={14} /> Coming soon</span>
+                        <h1 id="soon-title">Your AI manager is on the way</h1>
+                        <p className="soon-lead">Ask your business a question in plain words and get an answer built from your own bookings, money and team. No reports to open, no numbers to add up.</p>
+                        <div className="soon-actions">
+                            <a className="btn btn-primary" href={interest} target="_blank" rel="noopener noreferrer"><Bell size={15} /> Tell me when it is ready</a>
+                            <span className="tiny">Your plan: {PLANS[company?.subscriptionPlan || 'pro']?.name || 'none'}. Nothing to set up now.</span>
                         </div>
                     </div>
-                </Panel>
+
+                    <div className="soon-demo" aria-hidden="true">
+                        <span className="soon-demo-label">Preview</span>
+                        <div className="bubble me">How are sales today?</div>
+                        <div className="bubble ai">240 QAR from 2 finished jobs, with 1 still to do. Nothing is worrying me right now.</div>
+                        <div className="bubble me">Who owes us money?</div>
+                        <div className="bubble ai">Two invoices are waiting. The oldest is 6 days late. Want me to write the reminder for WhatsApp?</div>
+                    </div>
+                </section>
+
+                <div className="soon-grid">
+                    <div className="soon-card"><span className="soon-ico"><MessageCircle size={20} /></span><h2>Ask like you would ask a person</h2><p>Type a question in English or Arabic. Sales today, who is free tomorrow, which jobs have no cleaner.</p></div>
+                    <div className="soon-card"><span className="soon-ico"><Eye size={20} /></span><h2>Sees what you would miss</h2><p>Late invoices, empty slots and unhappy clients are pointed out before they cost you money.</p></div>
+                    <div className="soon-card"><span className="soon-ico"><FileText size={20} /></span><h2>A daily report in one tap</h2><p>The day in a short message you can send to your team on WhatsApp.</p></div>
+                </div>
             </div>
         );
     }

@@ -47,6 +47,16 @@ Supabase never stores readable passwords, so passwords can be replaced but never
 
 The function runs on Supabase servers and checks in the database that the caller is the platform admin before changing anything. The service key never reaches the browser.
 
+## 3b-2. Drivers who sign in with a phone number (needed for the driver app)
+
+Each company gives its drivers a page of its own (`/driver/login?c=<company id>`). A driver signs in with a **phone number and a password** that the company owner creates in **Settings, Drivers**. Creating a login for someone else needs the service key, so it is done by an Edge Function:
+
+1. Dashboard, **Edge Functions**, **Deploy a new function**, **Via Editor**.
+2. Name it exactly `driver-admin`.
+3. Paste the contents of `supabase/functions/driver-admin/index.ts` and click **Deploy**. Leave "Verify JWT" on.
+
+The function checks in the database that the caller is an active company owner or manager, takes the company from the caller's own profile, and only ever touches drivers of that company. Without it, **Add driver** shows "The driver service is not set up yet". (In local demo mode no function is needed.)
+
 ## 3c. The AI Manager (CleanBase AI Master plan)
 
 The AI Manager page works as soon as a company is on the **CleanBase AI Master** plan, with **no outside service**. A built-in engine reads that company's real bookings, money, staff and stock, finds problems and suggests the fix for each, answers questions in English and Arabic, and builds a daily report that can be shared on WhatsApp.

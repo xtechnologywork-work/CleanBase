@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { addDays, format, parseISO } from 'date-fns';
 import {
-    addItem, dayLabel, downloadCsv, fmt, fmt0, inRange, logActivity, printHtml, staffName, today, updateItem, useCollection, useDB,
+    addItem, dayLabel, downloadCsv, escHtml, fmt, fmt0, inRange, logActivity, printHtml, staffName, today, updateItem, useCollection, useDB,
 } from '../services/erp';
 import type { Attendance, StaffMeta } from '../services/erp';
 import { CrudTable, Empty, FormModal, Kpi, PageHeader, Panel, Pill, Table, Tabs } from '../components/shared/ui';
 import type { FieldDef } from '../components/shared/ui';
 import { Modal } from '../components/shared/ui';
 import { PhotoImg } from '../components/shared/PhotoImg';
+import { DocThumb } from '../components/shared/DocThumb';
+import { isPdfRef, openDocument } from '../services/documents';
 import { deletePhoto } from '../services/photos';
 import type { StaffDoc } from '../services/erp';
 
@@ -99,7 +101,7 @@ const DocsTab: React.FC<{ companyId: string }> = ({ companyId }) => {
         { name: 'type', label: 'Document type', type: 'select', required: true, half: true, options: ['QID', 'Visa', 'Health card', 'Passport', 'Contract', 'Other'].map(v => ({ value: v, label: v })) },
         { name: 'number', label: 'Number', half: true },
         { name: 'expiry', label: 'Expiry date', type: 'date', required: true },
-        { name: 'photo', label: 'Photo of the document', type: 'photo', required: true, hint: 'Take a clear picture with your phone, or choose one from your files.' },
+        { name: 'photo', label: 'Document file', type: 'photo', required: true, hint: 'A clear photo (take it with your phone) or a PDF, up to 10 MB.' },
     ];
     return (
         <div className="stack">
@@ -114,9 +116,9 @@ const DocsTab: React.FC<{ companyId: string }> = ({ companyId }) => {
                     cols={[
                         { key: 's', header: 'Staff', render: d => staffName(db, d.staffId) },
                         { key: 'type', header: 'Type' }, { key: 'number', header: 'Number' },
-                        { key: 'ph', header: 'Photo', render: d => d.photo
-                            ? <button className="btn btn-ghost btn-sm" onClick={() => setViewing(d)} aria-label="View document photo"><PhotoImg src={d.photo} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8 }} /></button>
-                            : <span className="tiny">No photo</span> },
+                        { key: 'ph', header: 'File', render: d => d.photo
+                            ? <button className="btn btn-ghost btn-sm" onClick={() => (isPdfRef(d.photo!) ? void openDocument(d.photo!) : setViewing(d))} aria-label="Open document"><DocThumb file={d.photo} /></button>
+                            : <span className="tiny">No file</span> },
                         { key: 'exp', header: 'Expires', render: d => dayLabel(d.expiry) },
                         { key: 'st', header: 'Status', render: d => d.expiry < today() ? <Pill tone="bad">Expired</Pill> : d.expiry <= soon ? <Pill tone="warn">Expiring soon</Pill> : <Pill tone="good">Valid</Pill> },
                     ]} />
@@ -216,8 +218,8 @@ const PayrollTab: React.FC<{ companyId: string }> = ({ companyId }) => {
     };
     const slip = (id: string) => {
         const p = payroll.find(x => x.id === id); if (!p) return;
-        printHtml(`Payslip ${month}`, `<h1>Payslip</h1><p class="muted">${format(parseISO(`${month}-01`), 'MMMM yyyy')} · ${db.companies.find(c => c.id === companyId)?.name || ''}</p>
-            <p><b>${staffName(db, p.staffId)}</b></p>
+        printHtml(`Payslip ${month}`, `<h1>Payslip</h1><p class="muted">${format(parseISO(`${month}-01`), 'MMMM yyyy')} · ${escHtml(db.companies.find(c => c.id === companyId)?.name)}</p>
+            <p><b>${escHtml(staffName(db, p.staffId))}</b></p>
             <table><tr><th>Item</th><th class="r">QAR</th></tr><tr><td>Basic salary</td><td class="r">${fmt(p.base)}</td></tr>
             <tr><td>Commission</td><td class="r">${fmt(p.commission)}</td></tr><tr><td>Overtime</td><td class="r">${fmt(p.overtime)}</td></tr>
             <tr><td>Deductions</td><td class="r">-${fmt(p.deductions)}</td></tr><tr><td><b>Net pay</b></td><td class="r"><b>${fmt(p.net)}</b></td></tr></table>`);

@@ -35,12 +35,12 @@ const count = async (sub, where = 'true') => Number((await as(sub, `select count
 before(async () => {
     await db.exec(`
         create schema auth;
-        create table auth.users (id uuid primary key, email text);
+        create table auth.users (id uuid primary key, email text, email_confirmed_at timestamptz default now());
         create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
         create role anon nologin; create role authenticated nologin;
         grant usage on schema public, auth to anon, authenticated;
     `);
-    for (const f of ['0001_schema_and_security.sql', '0002_public_api.sql', '0003_automations.sql', '0005_booking_store.sql', '0006_store_insights.sql']) await db.exec(sql(f));
+    for (const f of ['0001_schema_and_security.sql', '0002_public_api.sql', '0003_automations.sql', '0005_booking_store.sql', '0006_store_insights.sql', '0007_store_branding.sql', '0008_portal_phone_match.sql', '0009_public_brand.sql', '0010_weekly_hours.sql', '0012_company_guard.sql', '0013_link_after_confirm.sql', '0014_driver_trips.sql', '0015_cleaner_reservations.sql']) await db.exec(sql(f));
     await db.exec(`grant execute on all functions in schema auth to anon, authenticated`);
 
     // platform admin first, then the admin signs up and the trigger links them
@@ -283,6 +283,38 @@ test('anonymous visitors: no table access, but the public booking functions work
     assert.equal(portal.rows[0].r.bookings.length, 3);
     assert.equal((await as('anon', `select portal_lookup($1,'+974 5550 9999') r`, [ids.B])).rows[0].r, null);   // other company: nothing
     assert.equal((await as('anon', `select portal_lookup($1,'1') r`, [ids.A])).rows[0].r, null);              // short phone refused
+
+    // The number may be typed any way: local 8 digits, with +974, with spaces or dashes, with 00974
+    for (const typed of ['55509999', '5550 9999', '974 5550 9999', '+974-5550-9999', '00974 55509999']) {
+        assert.equal((await as('anon', `select portal_lookup($1,$2) r`, [ids.A, typed])).rows[0].r.bookings.length, 3, `typed as ${typed}`);
+    }
+    assert.equal((await as('anon', `select portal_lookup($1,'55509998') r`, [ids.A])).rows[0].r, null);       // another number
+    assert.equal((await as('anon', `select cb_phone_key('+974 3330 4550') k, cb_phone_key('33304550') k2, cb_phone_key('+44 7911 123456') k3`)).rows[0].k, '97433304550');
+    assert.equal((await as('anon', `select cb_phone_key('33304550') k`)).rows[0].k, '97433304550');
+    assert.equal((await as('anon', `select cb_phone_key('+44 7911 123456') k`)).rows[0].k, '447911123456');
+});
+
+test('booking store shows the company logo and colours, and ignores unsafe values', async () => {
+    const LOGO = 'data:image/png;base64,iVBORw0KGgo=';
+    await as(U.ownerA, `update records set data = data || $2::jsonb where collection='companies' and id=$1`,
+        [ids.A, JSON.stringify({ logo: LOGO, brandColor: '#0f8a5f', brandAccent: '#E4F5EE', tagline: '  Spotless homes  ' })]);
+    const c = (await as('anon', `select public_store($1) s`, [ids.A])).rows[0].s.company;
+    assert.equal(c.logo, LOGO);
+    assert.equal(c.primaryColor, '#0f8a5f');
+    assert.equal(c.accentColor, '#E4F5EE');
+    assert.equal(c.tagline, 'Spotless homes');
+
+    await as(U.ownerA, `update records set data = data || $2::jsonb where collection='companies' and id=$1`,
+        [ids.A, JSON.stringify({ logo: 'https://evil.test/x.png', brandColor: 'red; background:url(x)', brandAccent: '#12', tagline: '' })]);
+    const bad = (await as('anon', `select public_store($1) s`, [ids.A])).rows[0].s.company;
+    assert.equal(bad.logo, undefined);
+    assert.equal(bad.primaryColor, undefined);
+    assert.equal(bad.accentColor, undefined);
+    assert.equal(bad.tagline, undefined);
+    assert.ok(bad.name, 'the name is still returned');
+
+    await as(U.ownerA, `update records set data = data || $2::jsonb where collection='companies' and id=$1`, [ids.A, JSON.stringify({ logo: 'data:image/png;base64,' + 'A'.repeat(300000) })]);
+    assert.equal((await as('anon', `select public_store($1) s`, [ids.A])).rows[0].s.company.logo, undefined);   // too big
 });
 
 test('anonymous and tenants cannot run admin functions', async () => {
@@ -349,4 +381,194 @@ test('store insights: visitors are counted anonymously, only the owner reads the
     assert.equal(r.daily.length, 30);
     assert.deepEqual(r.daily.at(-1).visitors, 2);
     assert.equal((await as(U.ownerB, `select store_insights($1, 7) r`, [ids.B])).rows[0].r.steps.view, undefined);
+});
+
+test('public_brand: the portal gets the logo and colours, only for an active company, with the same safety checks', async () => {
+    // company A was approved earlier in this file; B is still locked
+    const LOGO = 'data:image/png;base64,iVBORw0KGgo=';
+    await as(U.ownerA, `update records set data = data || $2::jsonb where collection='companies' and id=$1`,
+        [ids.A, JSON.stringify({ logo: LOGO, brandColor: '#6d4aff', brandAccent: 'nope', tagline: 'Fresh and clean' })]);
+    const b = (await as('anon', `select public_brand($1) b`, [ids.A])).rows[0].b;
+    assert.equal(b.logo, LOGO);
+    assert.equal(b.primaryColor, '#6d4aff');
+    assert.equal(b.accentColor, undefined);          // not a colour
+    assert.equal(b.tagline, 'Fresh and clean');
+    assert.ok(b.name);
+    assert.ok(!JSON.stringify(b).includes('totalSpent') && !('services' in b), 'nothing but the look');
+    assert.equal((await as('anon', `select public_brand('nope') b`)).rows[0].b, null);
+});
+
+test('opening hours per weekday: closed days and each day\'s own hours are enforced by the server', async () => {
+    const day = n => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
+    const iso = d => (new Date(`${d}T00:00:00Z`).getUTCDay() + 6) % 7;            // Monday = 0
+    const next = idx => { for (let n = 20; n < 40; n++) if (iso(day(n)) === idx) return day(n); throw new Error('no such day'); };
+    const REQ = `select public_request_booking($1,'svc-1','st-a1',$2,$3,'Zed',$4,'Pearl Tower','') r`;
+    const week = Array.from({ length: 7 }, () => ({ open: true, start: '09:00', end: '17:00' }));
+    week[4] = { open: false, start: '09:00', end: '17:00' };                        // Friday closed
+    week[5] = { open: true, start: '10:00', end: '14:00' };                         // Saturday short day
+    await as(U.ownerA, INSERT, rec('settings', 'set-A', ids.A, { weekHours: week, workStart: '07:00', workEnd: '19:00', minNoticeHours: 0 }));
+
+    const rules = (await as('anon', `select public_store($1) s`, [ids.A])).rows[0].s.rules;
+    assert.equal(rules.week.length, 7);
+    assert.equal(rules.week[4].open, false);
+    assert.deepEqual([rules.week[5].start, rules.week[5].end], ['10:00', '14:00']);
+
+    await assert.rejects(() => as('anon', REQ, [ids.A, next(4), '10:00', '+974 5552 0001']), /closed on that day/);          // Friday
+    assert.equal((await as('anon', REQ, [ids.A, next(5), '10:00', '+974 5552 0002'])).rows[0].r.ok, true);                    // Saturday 10:00 to 13:00
+    await assert.rejects(() => as('anon', REQ, [ids.A, next(5), '12:00', '+974 5552 0003']), /working hours/);                // Saturday, would end at 15:00
+    assert.equal((await as('anon', REQ, [ids.A, next(0), '09:00', '+974 5552 0004'])).rows[0].r.ok, true);                    // Monday from opening
+    await assert.rejects(() => as('anon', REQ, [ids.A, next(0), '08:00', '+974 5552 0005']), /working hours/);                // Monday before opening
+    await assert.rejects(() => as('anon', REQ, [ids.A, next(0), '15:00', '+974 5552 0006']), /working hours/);                // Monday, would end at 18:00
+
+    // A broken week (not seven days) is ignored: the single start and end apply, as before
+    await as(U.ownerA, `update records set data = data || $1::jsonb where collection='settings' and id='set-A'`, [JSON.stringify({ weekHours: [{ open: true, start: '09:00', end: '17:00' }] })]);
+    assert.equal((await as('anon', `select public_store($1) s`, [ids.A])).rows[0].s.rules.week, null);
+    assert.equal((await as('anon', REQ, [ids.A, next(4), '08:00', '+974 5552 0007'])).rows[0].r.ok, true);                   // Friday works again, 07:00 to 19:00
+});
+
+test('HEALTH_CHECK.sql runs read-only and reports the functions as present', async () => {
+    await db.exec(`create schema if not exists storage; create table if not exists storage.buckets (id text primary key, name text, public boolean)`);
+    await db.exec(`insert into storage.buckets values ('job-photos','job-photos',false) on conflict do nothing`);
+    const before = Number((await db.query(`select count(*)::int n from records`)).rows[0].n);
+    const r = await db.query(readFileSync(join(here, '..', 'HEALTH_CHECK.sql'), 'utf8'));
+    const rows = r.rows;
+    assert.ok(rows.length > 20, 'expected one row per check');
+    const fnRows = rows.filter(x => x.area === 'Functions');
+    assert.ok(fnRows.length >= 17);
+    assert.deepEqual(fnRows.filter(x => x.status !== 'OK').map(x => x.item), []);
+    const status = Object.fromEntries(rows.map(x => [x.item, x.status]));
+    assert.equal(status['Bucket job-photos exists and is private'], 'OK');
+    assert.equal(status['Bucket staff-videos exists and is private'], 'NEEDS ACTION');
+    assert.equal(status['An active platform admin (superadmin) can sign in'], 'OK');
+    assert.equal(status['Anonymous visitors cannot read the tables directly'], 'OK');
+    assert.equal(Number((await db.query(`select count(*)::int n from records`)).rows[0].n), before, 'the check must not change data');
+});
+
+test('company guard: an owner cannot change plan, price, license or approval, and cannot read the admin notes', async () => {
+    const before = (await as(U.sup, `select data from records where collection='companies' and id=$1`, [ids.A])).rows[0].data;
+    await as(U.sup, `update records set data = data || '{"licenseUntil":"2026-12-01","monthlyRevenue":500}'::jsonb where collection='companies' and id=$1`, [ids.A]);
+    // the owner tries to give themselves the AI plan for free, forever, and renames the company
+    await as(U.ownerA, `update records set data = data || '{"subscriptionPlan":"ai_master","monthlyRevenue":0,"licenseUntil":"2099-01-01","approvedAt":"2000-01-01","name":"Renamed A"}'::jsonb where collection='companies' and id=$1`, [ids.A]);
+    const after = (await as(U.sup, `select data from records where collection='companies' and id=$1`, [ids.A])).rows[0].data;
+    assert.equal(after.name, 'Renamed A', 'the owner may rename the company');
+    assert.equal(after.subscriptionPlan, before.subscriptionPlan);
+    assert.equal(after.monthlyRevenue, 500);
+    assert.equal(after.licenseUntil, '2026-12-01');
+    assert.equal(after.approvedAt, before.approvedAt);
+    // the owner cannot add the field either when it was not there
+    await as(U.ownerA, `update records set data = data || '{"adminNotes":"hello"}'::jsonb where collection='companies' and id=$1`, [ids.A]);
+    assert.equal((await as(U.sup, `select data->>'adminNotes' n from records where collection='companies' and id=$1`, [ids.A])).rows[0].n, null);
+    // the platform admin's private notes are stored apart and only the admin reads them
+    await as(U.sup, INSERT, ['tenantNotes', 'note-' + ids.A, null, JSON.stringify({ id: 'note-' + ids.A, tenantId: ids.A, notes: 'Pays late' })]);
+    assert.equal(await count(U.ownerA, `collection='tenantNotes'`), 0);
+    assert.equal(await count(U.sup, `collection='tenantNotes'`), 1);
+    await rejects(U.ownerA, INSERT, ['tenantNotes', 'note-x', null, JSON.stringify({ id: 'note-x', tenantId: ids.A, notes: 'x' })]);
+    // the platform admin can still change the plan
+    await as(U.sup, `update records set data = data || '{"subscriptionPlan":"ai_master"}'::jsonb where collection='companies' and id=$1`, [ids.A]);
+    assert.equal((await as(U.sup, `select data->>'subscriptionPlan' p from records where collection='companies' and id=$1`, [ids.A])).rows[0].p, 'ai_master');
+});
+
+test('an invitation is linked only after the invited email is confirmed', async () => {
+    // the owner of A invites a dispatcher
+    await as(U.ownerA, `insert into profiles (id, email, name, role, company_id, status) values ('u-inv1','invitee@cb.test','Invitee','dispatcher',$1,'active')`, [ids.A]);
+    const someone = '00000000-0000-0000-0000-0000000000a9';
+    // someone signs up with that email but never confirms it: the invitation stays free
+    await db.query(`insert into auth.users (id, email, email_confirmed_at) values ($1,'Invitee@cb.test', null)`, [someone]);
+    assert.equal((await db.query(`select auth_id from profiles where id='u-inv1'`)).rows[0].auth_id, null);
+    assert.equal(await count(someone, "collection <> 'platformSettings'"), 0, 'an unconfirmed account sees no company data');
+    // once the email is confirmed, the account is linked
+    await db.query(`update auth.users set email_confirmed_at = now() where id = $1`, [someone]);
+    assert.equal((await db.query(`select auth_id from profiles where id='u-inv1'`)).rows[0].auth_id, someone);
+});
+
+test('drivers: read the day, move only their own trips forward, cannot create, delete or hand them away', async () => {
+    const DRV = '00000000-0000-0000-0000-0000000000a7', DRV2 = '00000000-0000-0000-0000-0000000000a8';
+    await as(U.ownerA, `insert into profiles (id,email,name,role,company_id,status) values ('u-drv-a','drv@cb.test','Dave','driver',$1,'active'), ('u-drv-b','drv2@cb.test','Dan','driver',$1,'active')`, [ids.A]);
+    await as(U.ownerA, INSERT, rec('staff', 'st-drv-a', ids.A, { userId: 'u-drv-a' }));
+    await as(U.ownerA, INSERT, rec('staff', 'st-drv-b', ids.A, { userId: 'u-drv-b' }));
+    await db.query(`insert into auth.users values ($1,'drv@cb.test'), ($2,'drv2@cb.test')`, [DRV, DRV2]);
+
+    // the office creates accommodations and trips
+    await as(U.ownerA, INSERT, rec('accommodations', 'acc-1', ids.A, { name: 'Al Sadd villa' }));
+    await as(U.dispatcherA, INSERT, rec('trips', 'tr-1', ids.A, { bookingId: 'bk-mine', driverId: 'st-drv-a', date: '2026-11-22', stage: 'scheduled', events: [] }));
+    await as(U.ownerA, INSERT, rec('trips', 'tr-2', ids.A, { bookingId: 'bk-other', driverId: 'st-drv-b', date: '2026-11-22', stage: 'scheduled', events: [] }));
+
+    // the driver sees the trips, the accommodations and the bookings of the day, but not money
+    assert.equal(await count(DRV, `collection='trips'`), 2);
+    assert.equal(await count(DRV, `collection='accommodations'`), 1);
+    assert.ok(await count(DRV, `collection='bookings'`) > 0);
+    assert.equal(await count(DRV, `collection='invoices'`), 0);
+    assert.equal(await count(DRV, `collection='settings'`), 0);
+
+    // moves their own trip to the next step
+    const mine = await as(DRV, `update records set data = data || '{"stage":"to_pickup"}' where collection='trips' and id='tr-1' returning 1`);
+    assert.equal(mine.rows.length, 1);
+    // cannot touch a colleague's trip
+    const other = await as(DRV, `update records set data = data || '{"stage":"returned"}' where collection='trips' and id='tr-2' returning 1`);
+    assert.equal(other.rows.length, 0);
+    // cannot hand their trip to someone else, or point it at another booking
+    await rejects(DRV, `update records set data = data || '{"driverId":"st-drv-b"}' where collection='trips' and id='tr-1'`);
+    await rejects(DRV, `update records set data = data || '{"bookingId":"bk-other"}' where collection='trips' and id='tr-1'`);
+    // cannot create or delete trips, accommodations or bookings
+    await rejects(DRV, INSERT, rec('trips', 'tr-x', ids.A, { bookingId: 'bk-mine', driverId: 'st-drv-a' }));
+    await rejects(DRV, INSERT, rec('accommodations', 'acc-x', ids.A, { name: 'x' }));
+    assert.equal((await as(DRV, `delete from records where collection='trips' returning 1`)).rows.length, 0);
+    const bk = await as(DRV, `update records set data = data || '{"price":1}' where collection='bookings' and id='bk-mine' returning 1`);
+    assert.equal(bk.rows.length, 0);
+    // a driver of another company sees nothing of company A
+    assert.equal(await count(U.ownerB, `collection='trips'`), 0);
+    // the stage really moved
+    assert.equal((await as(U.ownerA, `select data->>'stage' s from records where collection='trips' and id='tr-1'`)).rows[0].s, 'to_pickup');
+});
+
+test('a cleaner kept by a subscription is not offered to anyone else, and is free again when it ends', async () => {
+    const day = n => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
+    const REQ = `select public_request_booking($1,'svc-1','st-a1',$2,$3,'Zoe',$4,'Pearl Tower','') r`;
+    const setSub = patch => as(U.ownerA, `update records set data = data || $1::jsonb where collection='subscriptions' and id='sub-r1'`, [JSON.stringify(patch)]);
+    const setMode = mode => as(U.ownerA, `update records set data = data || $1::jsonb where collection='settings' and id='set-A'`, [JSON.stringify({ reserveCleaners: mode })]);
+    const away = async () => (await as('anon', `select public_store($1) s`, [ids.A])).rows[0].s.away.filter(a => a.cleanerId === 'st-a1' && a.start >= day(40));   // leave from earlier tests is ignored
+
+    // Bader has a monthly plan with the cleaner for 10 days
+    await as(U.ownerA, INSERT, rec('clients', 'cl-sub', ids.A, { name: 'Bader', phone: '+974 5550 7777' }));
+    await as(U.ownerA, INSERT, rec('subscriptions', 'sub-r1', ids.A, { clientId: 'cl-sub', cleanerId: 'st-a1', frequency: 'monthly', status: 'active', startDate: `${day(45)}T00:00:00.000Z`, endDate: `${day(55)}T00:00:00.000Z` }));
+
+    // the booking page shows her away for that period only
+    let a = await away();
+    assert.deepEqual(a.map(x => [x.start, x.end]), [[day(45), day(55)]]);
+    // nobody else can ask for her inside the period, the day after it works
+    await assert.rejects(() => as('anon', REQ, [ids.A, day(50), '08:00', '+974 5552 1001']), /not available on that day/);
+    await assert.rejects(() => as('anon', REQ, [ids.A, day(45), '08:00', '+974 5552 1002']), /not available on that day/);
+    await assert.rejects(() => as('anon', REQ, [ids.A, day(55), '08:00', '+974 5552 1003']), /not available on that day/);
+    assert.equal((await as('anon', REQ, [ids.A, day(56), '08:00', '+974 5552 1004'])).rows[0].r.ok, true);
+    // Bader himself can still book her
+    assert.equal((await as('anon', REQ, [ids.A, day(50), '08:00', '+974 5550 7777'])).rows[0].r.ok, true);
+
+    // a weekly plan keeps nobody by default, but does when the company keeps cleaners for every subscription
+    await setSub({ frequency: 'weekly' });
+    assert.equal((await away()).length, 0);
+    assert.equal((await as('anon', REQ, [ids.A, day(51), '08:00', '+974 5552 1005'])).rows[0].r.ok, true);
+    await setMode('all');
+    assert.equal((await away()).length, 1);
+    await assert.rejects(() => as('anon', REQ, [ids.A, day(52), '08:00', '+974 5552 1006']), /not available on that day/);
+    await setMode('off');
+    assert.equal((await away()).length, 0);
+    assert.equal((await as('anon', REQ, [ids.A, day(52), '08:00', '+974 5552 1007'])).rows[0].r.ok, true);
+    await setMode('monthly'); await setSub({ frequency: 'monthly' });
+    assert.equal((await away()).length, 1);
+
+    // paused or cancelled: free. an ended contract: free. a signed contract: kept. no end date: kept until it ends
+    await setSub({ status: 'paused' });
+    assert.equal((await away()).length, 0);
+    await setSub({ status: 'active' });
+    await as(U.ownerA, INSERT, rec('contracts', 'ct-r1', ids.A, { subscriptionId: 'sub-r1', status: 'signed', createdAt: '2026-01-01T00:00:00Z' }));
+    assert.equal((await away()).length, 1);
+    await as(U.ownerA, `update records set data = data || '{"status":"ended"}'::jsonb where collection='contracts' and id='ct-r1'`);
+    assert.equal((await away()).length, 0);
+    await as(U.ownerA, `update records set data = data || '{"status":"signed"}'::jsonb where collection='contracts' and id='ct-r1'`);
+    await setSub({ endDate: null });
+    assert.deepEqual((await away()).map(x => x.end), ['9999-12-31']);
+
+    // another company is never affected, and tenants cannot call the helper directly
+    assert.equal((await as('anon', `select public_store($1) s`, [ids.B])).rows[0].s.away.filter(x => x.cleanerId === 'st-a1').length, 0);
+    await assert.rejects(() => as(U.ownerA, `select cb_reservations($1)`, [ids.A]));
 });

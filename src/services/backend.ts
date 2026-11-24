@@ -26,3 +26,4 @@ export const DB_KEY = isCloud ? 'cleanbase_cloud_db' : LEGACY_DB_KEY;
 export const ERP_KEY = isCloud ? 'cleanbase_cloud_erp' : LEGACY_ERP_KEY;
 
 export const PHOTO_BUCKET = 'job-photos';
+export const VIDEO_BUCKET = 'staff-videos';

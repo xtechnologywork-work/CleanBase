@@ -3,6 +3,7 @@ import { Copy, Eye, EyeOff, ExternalLink, MessageCircle, Pencil, Plus, Search, T
 import { useAuth } from '../contexts/AuthContext';
 import { fmt, logActivity, mutateDB, useDB } from '../services/erp';
 import { storeLink } from '../services/store';
+import { bookingLinkMessage, whatsappShareUrl } from '../services/bookingMessages';
 import type { Service } from '../types';
 import { Empty, Field, Kpi, Modal, PageHeader, Panel, Pill } from '../components/shared/ui';
 import { StoreInsights } from '../components/store/StoreInsights';
@@ -32,7 +33,7 @@ export const ServicesPage: React.FC = () => {
     const list = services.filter(s => `${s.name} ${s.description}`.toLowerCase().includes(q.toLowerCase()));
 
     const copy = () => { void navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); };
-    const share = () => window.open(`https://wa.me/?text=${encodeURIComponent(`Book your cleaning with ${company?.name || 'us'} online: ${link}`)}`, '_blank', 'noopener');
+    const share = () => window.open(whatsappShareUrl(bookingLinkMessage(company?.name || '', link)), '_blank', 'noopener');
 
     const toggle = (s: Service) => {
         mutateDB(d => { const x = d.services.find(r => r.id === s.id); if (x) x.online = s.online === false; });

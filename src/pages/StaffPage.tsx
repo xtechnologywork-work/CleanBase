@@ -1,54 +1,50 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { getDB, saveDB } from '../services/mockDb';
 import type { Staff, User, Booking, Service, Subscription, Client } from '../types';
 import {
     Plus, Search, Star, CheckCircle2, Trophy, Phone, MapPin, Calendar,
-    Clock, TrendingUp, Camera, Edit2, Repeat, X
+    Clock, TrendingUp, Camera, Edit2, Repeat, X, Play, FileText
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { VideoField, VideoPlayer } from '../components/staff/CleanerVideo';
+import { deleteVideo } from '../services/videos';
+import { CleanerDocuments } from '../components/staff/CleanerDocuments';
+import { docState } from '../services/documents';
+import { useCollection, useDB } from '../services/erp';
 import { CleanerSchedule } from '../components/bookings/CleanerSchedule';
 
+const EMPTY_FORM = { name: '', phone: '', age: '', nationality: '', photo: '', video: '', accommodationId: '' };
+
 export const StaffPage: React.FC = () => {
-    const [staffList, setStaffList] = useState<(Staff & { user: User })[]>([]);
-    const [bookings, setBookings] = useState<Booking[]>([]);
-    const [services, setServices] = useState<Service[]>([]);
-    const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-    const [clients, setClients] = useState<Client[]>([]);
+    const { user } = useAuth();
+    const cid = user?.companyId;
+    // Live data, so changes from another device show up without a reload
+    const live = useDB();
+    const staffList = useMemo<(Staff & { user: User })[]>(() => live.staff.filter(s => s.companyId === cid)
+        .map(s => ({ ...s, user: live.users.find(u => u.id === s.userId)! })).filter(s => s.user !== undefined), [live, cid]);
+    const bookings = useMemo<Booking[]>(() => live.bookings.filter(b => b.companyId === cid), [live, cid]);
+    const services = useMemo<Service[]>(() => live.services.filter(s => s.companyId === cid), [live, cid]);
+    const subscriptions = useMemo<Subscription[]>(() => (live.subscriptions || []).filter(s => s.companyId === cid), [live, cid]);
+    const clients = useMemo<Client[]>(() => live.clients.filter(c => c.companyId === cid), [live, cid]);
 
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
-    const [formData, setFormData] = useState({ name: '', phone: '', age: '', nationality: '', photo: '' });
+    const [formData, setFormData] = useState(EMPTY_FORM);
+    const [originalVideo, setOriginalVideo] = useState('');            // the video the cleaner had when the window was opened
+    const [videoBusy, setVideoBusy] = useState(false);                // a video is uploading: Save and Cancel wait
+    const [docsFor, setDocsFor] = useState<{ id: string; name: string } | null>(null);
+    const [watching, setWatching] = useState<{ ref: string; name: string } | null>(null);
 
     // Cleaner Schedule Modal State
     const [viewingCleanerId, setViewingCleanerId] = useState<string | null>(null);
     const [viewingCleanerName, setViewingCleanerName] = useState<string>('');
 
-    const { user } = useAuth();
+    const { items: allDocs } = useCollection('staffDocs', user?.companyId);
+    const { items: homes } = useCollection('accommodations', user?.companyId);
     const canEdit = user?.role === 'superadmin' || user?.role === 'companyadmin';
-
-    useEffect(() => {
-        if (user?.companyId) {
-            loadData();
-        }
-    }, [user?.companyId]);
-
-    const loadData = () => {
-        if (!user?.companyId) return;
-        const db = getDB();
-        const joined = db.staff
-            .filter(s => s.companyId === user.companyId)
-            .map(s => {
-                const u = db.users.find(u => u.id === s.userId);
-                return { ...s, user: u! };
-            }).filter(s => s.user !== undefined);
-
-        setStaffList(joined);
-        setBookings(db.bookings.filter(b => b.companyId === user.companyId));
-        setServices(db.services.filter(s => s.companyId === user.companyId));
-        setSubscriptions(db.subscriptions?.filter(s => s.companyId === user.companyId) || []);
-        setClients(db.clients.filter(c => c.companyId === user.companyId));
-    };
+    // Saving writes to the shared store, which refreshes the live data above
+    const loadData = () => undefined;
 
     const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -88,9 +84,17 @@ export const StaffPage: React.FC = () => {
         reader.readAsDataURL(file);
     };
 
+    // Closing the window without saving removes a video that was uploaded during this edit, so no file is left behind
+    const closeModal = () => {
+        if (formData.video && formData.video !== originalVideo) void deleteVideo(formData.video).catch(() => undefined);
+        setIsModalOpen(false); setEditingStaffId(null); setFormData(EMPTY_FORM); setOriginalVideo('');
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const db = getDB();
+        // A replaced or removed video: the old file is deleted once the change is saved
+        if (originalVideo && originalVideo !== formData.video) void deleteVideo(originalVideo).catch(() => undefined);
 
         if (editingStaffId) {
             const staffIndex = db.staff.findIndex(s => s.id === editingStaffId);
@@ -104,6 +108,8 @@ export const StaffPage: React.FC = () => {
                 db.staff[staffIndex].age = parseInt(formData.age) || undefined;
                 db.staff[staffIndex].nationality = formData.nationality;
                 db.staff[staffIndex].photo = formData.photo || undefined;
+                db.staff[staffIndex].video = formData.video || undefined;
+                db.staff[staffIndex].accommodationId = formData.accommodationId || undefined;
             }
         } else {
             const newUser: User = {
@@ -124,6 +130,8 @@ export const StaffPage: React.FC = () => {
                 age: parseInt(formData.age) || undefined,
                 nationality: formData.nationality,
                 photo: formData.photo || undefined,
+                video: formData.video || undefined,
+                accommodationId: formData.accommodationId || undefined,
                 rating: 5.0,
                 completedJobsCount: 0,
                 revenueGenerated: 0,
@@ -136,11 +144,12 @@ export const StaffPage: React.FC = () => {
         loadData();
         setIsModalOpen(false);
         setEditingStaffId(null);
-        setFormData({ name: '', phone: '', age: '', nationality: '', photo: '' });
+        setFormData(EMPTY_FORM);
+        setOriginalVideo('');
     };
 
     const filteredStaff = staffList.filter(s =>
-        (s.user?.role === 'cleaner' || s.user?.role === 'driver') &&
+        s.user?.role === 'cleaner' &&
         (s.user?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (s.nationality && s.nationality.toLowerCase().includes(searchTerm.toLowerCase())))
     );
@@ -159,9 +168,13 @@ export const StaffPage: React.FC = () => {
         let jobs7Days = 0;
         let jobs30Days = 0;
         let hoursWorked = 0;
+        let lifetimeJobs = 0;
+        let lifetimeRevenue = 0;
 
         staffBookings.forEach(b => {
             if (b.status === 'completed') {
+                lifetimeJobs++;
+                lifetimeRevenue += Number(b.price) || 0;
                 const service = services.find(s => s.id === b.serviceId);
                 const durationHours = service && service.durationMinutes ? service.durationMinutes / 60 : 2;
                 hoursWorked += durationHours;
@@ -173,14 +186,11 @@ export const StaffPage: React.FC = () => {
             }
         });
 
-        if (staff.completedJobsCount > 0 && jobs30Days === 0) {
-            jobs30Days = staff.completedJobsCount;
-            hoursWorked = staff.completedJobsCount * 2.5;
-            jobs7Days = Math.floor(staff.completedJobsCount / 4);
-        }
-
+        // Counted from the real bookings, so the numbers are always right (the stored counters are never updated)
         return {
             ...staff,
+            completedJobsCount: lifetimeJobs,
+            revenueGenerated: lifetimeRevenue,
             jobsToday,
             jobs7Days,
             jobs30Days,
@@ -210,7 +220,8 @@ export const StaffPage: React.FC = () => {
                         className="btn btn-primary"
                         onClick={() => {
                             setEditingStaffId(null);
-                            setFormData({ name: '', phone: '', age: '', nationality: '', photo: '' });
+                            setFormData(EMPTY_FORM);
+                            setOriginalVideo('');
                             setIsModalOpen(true);
                         }}
                         style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', padding: '0.55rem 1rem' }}
@@ -415,8 +426,11 @@ export const StaffPage: React.FC = () => {
                                                     phone: staff.phone || '',
                                                     age: staff.age?.toString() || '',
                                                     nationality: staff.nationality || '',
-                                                    photo: staff.photo || ''
+                                                    photo: staff.photo || '',
+                                                    video: staff.video || '',
+                                                    accommodationId: staff.accommodationId || ''
                                                 });
+                                                setOriginalVideo(staff.video || '');
                                                 setIsModalOpen(true);
                                             }}
                                             style={{
@@ -439,7 +453,24 @@ export const StaffPage: React.FC = () => {
                                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                                     <Phone size={12} color="var(--color-text-tertiary)" />
                                     <span style={{ fontFamily: 'var(--font-sans)' }}>{staff.phone || 'No phone'}</span>
+                                    {staff.video && (
+                                        <button type="button" title="Watch video" onClick={e => { e.stopPropagation(); setWatching({ ref: staff.video!, name: staff.user?.name || '' }); }}
+                                            style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', border: '1px solid var(--color-border)', background: 'var(--color-bg-subtle)', borderRadius: '999px', padding: '0.2rem 0.6rem', fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-primary)', cursor: 'pointer' }}>
+                                            <Play size={10} fill="currentColor" /> Video
+                                        </button>
+                                    )}
                                 </div>
+                                {(() => {
+                                    const docs = allDocs.filter(d => d.staffId === staff.id);
+                                    const states = docs.map(d => docState(d.expiry));
+                                    const tone = states.includes('expired') ? '#d70015' : states.includes('soon') ? '#b86e00' : 'var(--color-text-secondary)';
+                                    return (
+                                        <button type="button" onClick={e => { e.stopPropagation(); setDocsFor({ id: staff.id, name: staff.user?.name || '' }); }}
+                                            style={{ marginTop: '0.6rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', border: '1px solid var(--color-border)', background: 'var(--color-bg-subtle)', borderRadius: '8px', padding: '0.3rem 0.65rem', fontSize: '0.75rem', fontWeight: 600, color: tone, cursor: 'pointer' }}>
+                                            <FileText size={12} /> Documents ({docs.length}){states.includes('expired') ? ' · expired' : states.includes('soon') ? ' · expiring soon' : ''}
+                                        </button>
+                                    );
+                                })()}
                             </div>
 
                             {/* Assigned Subscriptions Section in Cleaner Card */}
@@ -529,10 +560,26 @@ export const StaffPage: React.FC = () => {
                 />
             )}
 
+            {/* A cleaner's documents */}
+            {docsFor && <CleanerDocuments staffId={docsFor.id} name={docsFor.name} companyId={user?.companyId || ''} actor={user?.name || 'Owner'} onClose={() => setDocsFor(null)} />}
+
+            {/* Watch a cleaner's video */}
+            {watching && (
+                <div className="sheet sheet-legacy" data-sheet onClick={() => setWatching(null)}>
+                    <div className="card" style={{ width: '100%', maxWidth: '560px', padding: '1.25rem', boxShadow: 'var(--shadow-lg)' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                            <h2 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>{watching.name}</h2>
+                            <button onClick={() => setWatching(null)} aria-label="Close" style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0.25rem', color: 'var(--color-text-secondary)' }}><X size={18} /></button>
+                        </div>
+                        <VideoPlayer videoRef={watching.ref} title={watching.name} />
+                    </div>
+                </div>
+            )}
+
             {/* Add / Edit Cleaner Modal */}
             {isModalOpen && (
                 <div className="sheet sheet-legacy" data-sheet>
-                    <div className="card" style={{ width: '100%', maxWidth: '480px', padding: '1.75rem', boxShadow: 'var(--shadow-lg)' }} onClick={e => e.stopPropagation()}>
+                    <div className="card" style={{ width: '100%', maxWidth: '520px', padding: '1.75rem', boxShadow: 'var(--shadow-lg)', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                             <div>
                                 <h2 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, letterSpacing: '-0.02em', color: 'var(--color-text-primary)' }}>
@@ -543,7 +590,7 @@ export const StaffPage: React.FC = () => {
                                 </p>
                             </div>
                             <button
-                                onClick={() => { setIsModalOpen(false); setEditingStaffId(null); setFormData({ name: '', phone: '', age: '', nationality: '', photo: '' }); }}
+                                onClick={closeModal} disabled={videoBusy}
                                 style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0.25rem', color: 'var(--color-text-secondary)' }}
                             >
                                 <X size={18} />
@@ -595,12 +642,25 @@ export const StaffPage: React.FC = () => {
                                     <label className="input-label">Nationality</label>
                                     <input type="text" className="input-field" value={formData.nationality} onChange={e => setFormData({ ...formData, nationality: e.target.value })} placeholder="e.g. Filipino" />
                                 </div>
+                                <div className="input-group">
+                                    <label className="input-label">Accommodation</label>
+                                    <select className="input-field" value={formData.accommodationId} onChange={e => setFormData({ ...formData, accommodationId: e.target.value })}>
+                                        <option value="">{homes.length ? 'Not set' : 'Add accommodations in Zones and supplies first'}</option>
+                                        {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="input-group" style={{ marginTop: '0.75rem' }}>
+                                <label className="input-label">Introduction video (optional)</label>
+                                <VideoField value={formData.video} original={originalVideo} companyId={user?.companyId || ''} name={formData.name}
+                                    onChange={v => setFormData(prev => ({ ...prev, video: v }))} onBusy={setVideoBusy} />
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
-                                <button type="button" className="btn btn-secondary" onClick={() => { setIsModalOpen(false); setEditingStaffId(null); setFormData({ name: '', phone: '', age: '', nationality: '', photo: '' }); }} style={{ fontSize: '0.8125rem' }}>
+                                <button type="button" className="btn btn-secondary" onClick={closeModal} disabled={videoBusy} style={{ fontSize: '0.8125rem' }}>
                                     Cancel
                                 </button>
-                                <button type="submit" className="btn btn-primary" style={{ fontSize: '0.8125rem' }}>
+                                <button type="submit" className="btn btn-primary" disabled={videoBusy} style={{ fontSize: '0.8125rem' }}>
                                     {editingStaffId ? 'Save Changes' : 'Add Cleaner'}
                                 </button>
                             </div>

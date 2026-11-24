@@ -4,8 +4,9 @@ import { dayLabel, fmt, fmt0, staffName, today, updateItem, useCollection, useDB
 import { CrudTable, Kpi, PageHeader, Panel, Pill, Tabs } from '../components/shared/ui';
 import type { FieldDef } from '../components/shared/ui';
 import { addDays, format, parseISO } from 'date-fns';
+import { mapsLink } from '../services/trips';
 
-type Tab = 'zones' | 'vehicles' | 'supplies';
+type Tab = 'zones' | 'accommodations' | 'vehicles' | 'supplies';
 
 export const ResourcesPage: React.FC = () => {
     const { user } = useAuth();
@@ -14,6 +15,7 @@ export const ResourcesPage: React.FC = () => {
     const [tab, setTab] = useState<Tab>('zones');
     const { items: zones } = useCollection('zones', companyId);
     const { items: vehicles } = useCollection('vehicles', companyId);
+    const { items: homes } = useCollection('accommodations', companyId);
     const { items: supplies } = useCollection('supplies', companyId);
     const { items: usage } = useCollection('supplyUsage', companyId);
 
@@ -27,6 +29,12 @@ export const ResourcesPage: React.FC = () => {
         { name: 'name', label: 'Zone name', required: true },
         { name: 'areas', label: 'Areas covered', required: true, type: 'textarea', hint: 'Comma separated, for example: West Bay, Pearl, Lusail. Jobs are matched to zones by address.' },
         { name: 'surcharge', label: 'Travel surcharge (QAR)', type: 'number', half: true },
+    ];
+    const homeFields: FieldDef[] = [
+        { name: 'name', label: 'Name', required: true, placeholder: 'e.g. Al Sadd villa' },
+        { name: 'address', label: 'Address', required: true, placeholder: 'Street, building, area' },
+        { name: 'mapUrl', label: 'Google Maps link', hint: 'Optional. Open the place in Google Maps, press Share, paste the link. Drivers get exact directions.' },
+        { name: 'notes', label: 'Notes for the driver', type: 'textarea', placeholder: 'Gate number, where to wait...' },
     ];
     const vehicleFields: FieldDef[] = [
         { name: 'name', label: 'Vehicle name', required: true, half: true },
@@ -53,7 +61,7 @@ export const ResourcesPage: React.FC = () => {
                 <Kpi label="Low stock items" value={low.length} tone={low.length ? 'warn' : undefined} hint={`${supplies.length} items tracked`} />
                 <Kpi label="Stock value" value={fmt0(supplies.reduce((s, x) => s + x.stock * x.costPerUnit, 0))} unit="QAR" />
             </div>
-            <Tabs value={tab} onChange={setTab} tabs={[{ id: 'zones', label: 'Zones' }, { id: 'vehicles', label: 'Vehicles' }, { id: 'supplies', label: 'Supplies' }]} />
+            <Tabs value={tab} onChange={setTab} tabs={[{ id: 'zones', label: 'Zones' }, { id: 'accommodations', label: 'Accommodations' }, { id: 'vehicles', label: 'Vehicles' }, { id: 'supplies', label: 'Supplies' }]} />
 
             {tab === 'zones' && (
                 <Panel title="Service zones" subtitle="Revenue and job counts come from completed bookings matched by address">
@@ -65,6 +73,21 @@ export const ResourcesPage: React.FC = () => {
                             { key: 'jobs', header: 'Jobs', align: 'r', render: z => bookings.filter(b => zoneForAddress(b.address, [z]) && b.status === 'completed').length },
                             { key: 'rev', header: 'Revenue', align: 'r', render: z => `${fmt0(bookings.filter(b => zoneForAddress(b.address, [z]) && b.status === 'completed').reduce((s, b) => s + b.price, 0))} QAR` },
                         ]} />
+                </Panel>
+            )}
+
+            {tab === 'accommodations' && (
+                <Panel title="Accommodations" subtitle="Where your cleaners live. Drivers pick them up here before a job and bring them back after. Choose each cleaner's accommodation in Cleaners.">
+                    <CrudTable collection="accommodations" companyId={companyId} noun="accommodation" addLabel="Add accommodation" fields={homeFields} defaults={{}}
+                        cols={[
+                            { key: 'name', header: 'Accommodation', render: h => <b style={{ fontWeight: 600 }}>{h.name}</b> },
+                            { key: 'address', header: 'Address' },
+                            { key: 'people', header: 'Cleaners', align: 'r', render: h => staff.filter(s => s.accommodationId === h.id).length },
+                            { key: 'map', header: 'Map', render: h => <a href={mapsLink(h.address, h.mapUrl)} target="_blank" rel="noopener noreferrer">Open map</a> },
+                        ]} />
+                    {homes.length > 0 && staff.some(s => !s.accommodationId) && (
+                        <p className="tiny" style={{ marginTop: 10 }}>{staff.filter(s => !s.accommodationId).length} team members have no accommodation yet. Set it in Cleaners, Edit.</p>
+                    )}
                 </Panel>
             )}
 

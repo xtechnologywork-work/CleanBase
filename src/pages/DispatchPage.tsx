@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Camera, Plus, Trash2 } from 'lucide-react';
 import { addDays, format, parseISO } from 'date-fns';
 import {
     addItem, findConflict, fmt, logActivity, minutesToTime, mutateDB, newChecklist, staffName, toMinutes, today,
-    uid, updateItem, useCollection, useDB, zoneForAddress,
+    uid, updateItem, useCollection, useDB, zoneForAddress, reservedMessage, cleanersOf,
 } from '../services/erp';
 import type { JobMeta } from '../services/erp';
 import type { Booking } from '../types';
@@ -22,7 +22,7 @@ export const DispatchPage: React.FC = () => {
     const [openId, setOpenId] = useState<string | null>(null);
 
     const jobs = db.bookings.filter(b => b.companyId === companyId && b.date === date).sort((a, b) => a.time.localeCompare(b.time));
-    const cleaners = db.staff.filter(s => s.companyId === companyId && ['cleaner', 'driver', 'staff'].includes(db.users.find(u => u.id === s.userId)?.role || ''));
+    const cleaners = db.staff.filter(s => s.companyId === companyId && ['cleaner', 'staff'].includes(db.users.find(u => u.id === s.userId)?.role || ''));
     const dur = (b: Booking) => db.services.find(s => s.id === b.serviceId)?.durationMinutes || 120;
     const svc = (b: Booking) => db.services.find(s => s.id === b.serviceId)?.name || 'Service';
     const client = (b: Booking) => db.clients.find(c => c.id === b.clientId)?.name || 'Guest';
@@ -111,12 +111,14 @@ const JobModal: React.FC<{ booking: Booking; companyId: string; onClose: () => v
     const client = db.clients.find(c => c.id === b.clientId);
     const service = db.services.find(s => s.id === b.serviceId);
     const duration = service?.durationMinutes || 120;
-    const cleaners = db.staff.filter(s => s.companyId === companyId);
+    const cleaners = cleanersOf(db, companyId);
     const patchMeta = (p: Partial<JobMeta>) => meta && updateItem('jobMeta', meta.id, p);
     const patchBooking = (p: Partial<Booking>) => mutateDB(d => { const t = d.bookings.find(x => x.id === b.id); if (t) Object.assign(t, p); });
 
     const assign = (cleanerId: string) => {
         if (cleanerId) {
+            const kept = reservedMessage(db, companyId, cleanerId, b.date, b.clientId, b.subscriptionId);
+            if (kept) { alert(kept); return; }
             const clash = findConflict(db, companyId, cleanerId, b.date, b.time, duration, b.id);
             if (clash && !confirm(`${staffName(db, cleanerId)} already has a job at ${clash.time} that overlaps. Assign anyway?`)) return;
         }
@@ -125,6 +127,8 @@ const JobModal: React.FC<{ booking: Booking; companyId: string; onClose: () => v
     };
     const reschedule = (date: string, time: string) => {
         if (b.cleanerId) {
+            const kept = reservedMessage(db, companyId, b.cleanerId, date, b.clientId, b.subscriptionId);
+            if (kept) { alert(kept); return; }
             const clash = findConflict(db, companyId, b.cleanerId, date, time, duration, b.id);
             if (clash && !confirm('This overlaps another job for the same cleaner. Move anyway?')) return;
         }

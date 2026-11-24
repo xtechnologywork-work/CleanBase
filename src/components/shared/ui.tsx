@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { Plus, X, Pencil, Trash2 } from 'lucide-react';
 import { addItem, removeItem, updateItem, useCollection } from '../../services/erp';
 import type { Base, Collections, CollectionName, NewItem } from '../../services/erp';
-import { uploadPhoto } from '../../services/photos';
+import { isPdfRef, uploadDocument } from '../../services/documents';
+import { DocThumb } from './DocThumb';
 import { PhotoImg } from './PhotoImg';
 import '../../erp.css';
 
@@ -129,7 +130,7 @@ export function Table<T extends { id: string }>({ cols, rows, empty = 'Nothing h
 
 export interface FieldDef {
     name: string; label: string; type?: 'text' | 'number' | 'date' | 'time' | 'select' | 'textarea' | 'tel' | 'email' | 'photo';
-    options?: { value: string; label: string }[]; required?: boolean; placeholder?: string; half?: boolean; hint?: string; step?: string;
+    options?: { value: string; label: string }[]; required?: boolean; placeholder?: string; half?: boolean; hint?: string; step?: string; min?: string;
 }
 
 export const Field: React.FC<{ label: string; half?: boolean; hint?: string; children: React.ReactNode }> = ({ label, half, hint, children }) => (
@@ -140,7 +141,7 @@ export const Field: React.FC<{ label: string; half?: boolean; hint?: string; chi
     </div>
 );
 
-/** Photo of a document: picked from the gallery or taken with the phone camera, then stored like job photos. */
+/** A document: a photo (gallery or phone camera) or a PDF, stored in the private bucket. */
 function PhotoField({ value, companyId, onChange }: { value: string; companyId: string; onChange: (v: string) => void }) {
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState('');
@@ -148,18 +149,19 @@ function PhotoField({ value, companyId, onChange }: { value: string; companyId: 
         const file = e.target.files?.[0];
         e.target.value = '';
         if (!file) return;
-        if (!file.type.startsWith('image/')) { setErr('Choose an image file.'); return; }
         setBusy(true); setErr('');
-        try { onChange(await uploadPhoto(file, companyId, 'docs', 1200)); } catch { setErr('Could not upload the photo. Try again.'); }
+        try { onChange(await uploadDocument(file, companyId)); } catch (x) { setErr(x instanceof Error ? x.message : 'Could not upload the file. Try again.'); }
         setBusy(false);
     };
     return (
         <div className="stack">
-            {value && <div><PhotoImg src={value} alt="Document" style={{ maxWidth: '100%', maxHeight: 240, borderRadius: 12, objectFit: 'contain', background: 'var(--color-bg-body)' }} /></div>}
+            {value && (isPdfRef(value)
+                ? <div><DocThumb file={value} size={72} /></div>
+                : <div><PhotoImg src={value} alt="Document" style={{ maxWidth: '100%', maxHeight: 240, borderRadius: 12, objectFit: 'contain', background: 'var(--color-bg-body)' }} /></div>)}
             <div className="toolbar">
                 <label className="btn btn-secondary btn-sm" style={{ cursor: busy ? 'wait' : 'pointer' }}>
-                    {busy ? 'Uploading...' : value ? 'Replace photo' : 'Upload photo'}
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={pick} disabled={busy} />
+                    {busy ? 'Uploading...' : value ? 'Replace file' : 'Upload photo or PDF'}
+                    <input type="file" accept="image/*,application/pdf" style={{ display: 'none' }} onChange={pick} disabled={busy} />
                 </label>
                 {value && !busy && <button type="button" className="btn btn-ghost btn-sm" onClick={() => onChange('')}>Remove</button>}
             </div>
@@ -185,7 +187,7 @@ export function FormModal({ open, title, fields, initial, onSubmit, onClose, sub
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         const missing = fields.find(f => f.type === 'photo' && f.required && !vals[f.name]);
-        if (missing) { setFormError(`Please add a photo: ${missing.label}.`); return; }
+        if (missing) { setFormError(`Please add the file: ${missing.label}.`); return; }
         setFormError(''); onSubmit(vals);
     };
     return (
@@ -205,7 +207,7 @@ export function FormModal({ open, title, fields, initial, onSubmit, onClose, sub
                                 <textarea value={vals[f.name] ?? ''} required={f.required} placeholder={f.placeholder} onChange={e => setVals({ ...vals, [f.name]: e.target.value })} />
                             ) : (
                                 <input
-                                    type={f.type || 'text'} step={f.step || (f.type === 'number' ? 'any' : undefined)} value={vals[f.name] ?? ''}
+                                    type={f.type || 'text'} step={f.step || (f.type === 'number' ? 'any' : undefined)} min={f.min ?? (f.type === 'number' ? '0' : undefined)} value={vals[f.name] ?? ''}
                                     required={f.required} placeholder={f.placeholder} onChange={e => setVals({ ...vals, [f.name]: e.target.value })}
                                 />
                             )}
@@ -223,7 +225,7 @@ export function FormModal({ open, title, fields, initial, onSubmit, onClose, sub
 }
 
 /* Cast helper: form values (strings) to a collection row, converting numbers. */
-export function coerce(fields: FieldDef[], values: Record<string, string>): Record<string, unknown> {
+function coerce(fields: FieldDef[], values: Record<string, string>): Record<string, unknown> {
     const out: Record<string, unknown> = {};
     fields.forEach(f => {
         const v = values[f.name];

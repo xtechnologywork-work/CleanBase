@@ -1,0 +1,87 @@
+import type { Dict } from '../../services/dashTranslate';
+import { cnt, jobs } from './util';
+
+const rides = (n: string) => cnt(n, 'رحلة واحدة', 'رحلتان', 'رحلات', 'رحلة');
+
+/** Services, the dispatch board, the driver board and the drivers panel in Settings. */
+const dict: Dict = {
+    /* services */
+    'What you sell, at what price and how long it takes. Shown services appear in your online booking store.': 'ما تبيعه، وبأي سعر، وكم يستغرق. الخدمات الظاهرة تُعرض في متجر الحجز الإلكتروني الخاص بك.',
+    'Add service': 'إضافة خدمة', 'Your booking store': 'متجر الحجز الخاص بك',
+    'Send this link to clients. They see your services, choose a cleaner and a free time, and send a request you accept under Bookings.': 'أرسل هذا الرابط للعملاء. يرون خدماتك ويختارون عامل نظافة ووقتًا متاحًا ويرسلون طلبًا تقبله من الحجوزات.',
+    'Open store': 'فتح المتجر', 'Shown in the store': 'ظاهرة في المتجر', 'Clients see nothing to book': 'لا يرى العملاء شيئًا للحجز',
+    'Requests waiting': 'طلبات بالانتظار', 'Accept or decline them under Bookings': 'اقبلها أو ارفضها من الحجوزات', 'Nothing to answer': 'لا شيء للرد عليه',
+    'Average price': 'متوسط السعر', 'All services': 'كل الخدمات', 'Search services': 'بحث في الخدمات', 'No service matches your search.': 'لا توجد خدمة مطابقة لبحثك.',
+    'No services yet. Add the cleanings you offer, with a price and a duration.': 'لا توجد خدمات بعد. أضف خدمات التنظيف التي تقدمها مع السعر والمدة.',
+    'No description': 'بلا وصف', 'Hidden from store': 'مخفية من المتجر', 'In the store': 'في المتجر', 'Show in store': 'إظهار في المتجر',
+    'Give the service a name.': 'أعطِ الخدمة اسمًا.', 'Enter the price, for example 120.': 'أدخل السعر، مثال: 120.',
+    'The duration must be between 15 minutes and 24 hours.': 'يجب أن تكون المدة بين 15 دقيقة و24 ساعة.',
+    'Updated a service': 'تم تحديث خدمة', 'Added a service': 'تمت إضافة خدمة', 'Showed a service in the booking store': 'تم إظهار خدمة في متجر الحجز',
+    'Hid a service from the booking store': 'تم إخفاء خدمة من متجر الحجز', 'Deleted a service': 'تم حذف خدمة',
+    'Name': 'الاسم', 'Deep cleaning': 'تنظيف عميق', 'Description': 'الوصف', 'Shown to clients in the booking store': 'يُعرض للعملاء في متجر الحجز',
+    'What is included': 'ما الذي يشمله', 'Hours': 'الساعات', 'Minutes': 'الدقائق', 'Show in the online booking store': 'إظهار في متجر الحجز الإلكتروني',
+    'The duration decides which times clients can pick: a 5 hour service only fits where the cleaner is free for 5 hours.': 'تحدد المدة الأوقات التي يمكن للعملاء اختيارها: خدمة مدتها 5 ساعات لا تناسب إلا حيث يكون عامل النظافة متفرغًا لمدة 5 ساعات.',
+    '{} is used by bookings or subscriptions, so it cannot be deleted. Hide it from the store instead.': m => `${m[1]} مستخدمة في حجوزات أو عقود، لذلك لا يمكن حذفها. أخفها من المتجر بدلًا من ذلك.`,
+    '{} hidden': m => `تم إخفاء ${m[1]}`,
+
+    /* dispatch board */
+    'Who is doing what, today and any day. Open a job to assign, start, finish and record the work.': 'من يقوم بماذا، اليوم وفي أي يوم. افتح المهمة لتعيينها وبدئها وإنهائها وتسجيل العمل.',
+    'Need a cleaner': 'تحتاج عامل نظافة', 'Everything is assigned.': 'كل المهام معيّنة.', 'Free all day.': 'متفرغ طوال اليوم.',
+    'Add cleaners under Cleaners to see them on the board.': 'أضف عمال النظافة من قسم «عمال النظافة» ليظهروا على اللوحة.',
+    'Unassigned cleaner': 'بلا عامل نظافة',
+    'This overlaps another job for the same cleaner. Move anyway?': 'تتداخل هذه المهمة مع مهمة أخرى لعامل النظافة نفسه. هل تريد النقل على أي حال؟',
+    'Could not upload that photo.': 'تعذر رفع تلك الصورة.', 'Job': 'المهمة', 'Reinstate': 'إعادة التفعيل', 'Cancel this job?': 'هل تريد إلغاء هذه المهمة؟', 'Reopen': 'إعادة الفتح',
+    'Vehicle': 'المركبة', 'Start time': 'وقت البدء', 'Zone': 'المنطقة', 'Detected from the address when it matches a zone': 'يُحدد من العنوان عندما يطابق منطقة', 'No zone': 'بلا منطقة',
+    'Checklist ({})': m => `قائمة المهام (${m[1]})`, 'Remove task': 'إزالة المهمة', 'Add a task': 'إضافة مهمة', 'Job notes': 'ملاحظات المهمة',
+    'Access details, special requests, issues found': 'تفاصيل الدخول، طلبات خاصة، مشاكل لوحظت',
+    'Before photos': 'صور قبل العمل', 'After photos': 'صور بعد العمل', 'Before': 'قبل', 'After': 'بعد',
+    'Click to remove': 'انقر للإزالة', 'Remove this photo?': 'هل تريد إزالة هذه الصورة؟', 'Supplies used': 'المستلزمات المستخدمة', 'Supply': 'المستلزم',
+    'Choose supply': 'اختر مستلزمًا', '({} left)': m => `(متبقٍ ${m[1]})`, 'Quantity': 'الكمية', 'Log usage': 'تسجيل الاستخدام', 'Office': 'المكتب',
+    '{n} jobs waiting': m => `${jobs(m[1])} بالانتظار`,
+    '{n} jobs · {} hours booked': m => `${jobs(m[1])} · ${m[2]} ساعة محجوزة`,
+    '{} already has a job at {} that overlaps. Assign anyway?': m => `لدى ${m[1]} مهمة في الساعة ${m[2]} تتداخل مع هذه المهمة. هل تريد التعيين على أي حال؟`,
+    'Assigned {}': m => `تم تعيين ${m[1]}`,
+    'Rescheduled job to {} {}': m => `تمت إعادة جدولة المهمة إلى ${m[1]} ${m[2]}`,
+    'Marked job {}': m => `تغيّرت حالة المهمة إلى ${m[1]}`, 'Started {}': m => `تم البدء: ${m[1]}`,
+
+    /* driver board */
+    'Give each booking a driver, then follow every ride live: picking up, at the client, collecting, back home.': 'عيّن سائقًا لكل حجز، ثم تابع كل رحلة مباشرة: الاستلام، عند العميل، الاستلام منه، العودة إلى السكن.',
+    'Copy driver login link': 'نسخ رابط دخول السائق', 'Open the driver app': 'فتح تطبيق السائق', 'Rides': 'الرحلات', 'On the road now': 'على الطريق الآن',
+    'Late': 'متأخرة', 'See the red rides below': 'شاهد الرحلات الحمراء أدناه', 'Everything on time': 'كل شيء في موعده', 'Back home': 'عادوا إلى السكن',
+    'Need a driver': 'تحتاج سائقًا', 'Add your first driver': 'أضف أول سائق', 'Add your drivers in': 'أضف سائقيك من', 'Settings, Drivers': 'الإعدادات، السائقون',
+    ': each one signs in with a phone number and a password, then give them a vehicle in': ': كل سائق يسجل الدخول برقم هاتف وكلمة مرور، ثم أعطه مركبة من',
+    'Zones and supplies, Vehicles': 'المناطق والمستلزمات، المركبات',
+    '. Set where each cleaner lives in Zones and supplies, Accommodations.': '. حدد مكان سكن كل عامل نظافة من المناطق والمستلزمات، أماكن السكن.',
+    'We suggest the least busy driver. Change it if you want, then assign.': 'نقترح السائق الأقل انشغالًا. غيّره إن أردت ثم اضغط تعيين.',
+    'Assign all': 'تعيين الكل', '· leave': '· إجازة', 'No cleaner on this booking yet': 'لا يوجد عامل نظافة في هذا الحجز بعد',
+    'No accommodation set for': 'لا يوجد سكن محدد لـ', 'No accommodation set for {}': m => `لا يوجد سكن محدد لـ ${m[1]}`,
+    '(no vehicle)': '(بلا مركبة)', 'Assign': 'تعيين', 'No vehicle assigned': 'لا توجد مركبة معيّنة', 'No rides this day.': 'لا توجد رحلات في هذا اليوم.',
+    'Planned': 'مخطط', 'No accommodation': 'بلا سكن', 'Leave': 'إجازة', '· At client': '· عند العميل', '· Collect': '· الاستلام من العميل', '· Home': '· السكن', 'Next:': 'التالي:',
+    'The booking time changed.': 'تغيّر موعد الحجز.', 'Update the ride times': 'تحديث مواعيد الرحلات', 'Change driver': 'تغيير السائق', 'Unknown driver': 'سائق غير معروف',
+    'Ride history': 'سجل الرحلة', 'Remove the driver': 'إزالة السائق',
+    'Remove the driver from this booking? The ride and its steps are deleted.': 'هل تريد إزالة السائق من هذا الحجز؟ ستُحذف الرحلة وخطواتها.',
+    'The driver has not started this ride yet.': 'لم يبدأ السائق هذه الرحلة بعد.', 'Where': 'المكان',
+    'Needs a driver ({})': m => `تحتاج سائقًا (${m[1]})`, 'Driver for {}': m => `سائق ${m[1]}`,
+    '{} · {} rides': m => `${m[1]} · ${rides(m[2])}`, '{} · {} ride': m => `${m[1]} · رحلة واحدة`, 'Step {} of 6': m => `الخطوة ${m[1]} من 6`,
+
+    /* drivers panel (Settings) */
+    'Could not remove the driver.': 'تعذر حذف السائق.', 'Driver login page': 'صفحة دخول السائق',
+    'This page belongs to your company only. Your drivers open it on their phone, sign in with their phone number and password, and see only the driver app.': 'هذه الصفحة خاصة بشركتك فقط. يفتحها سائقوك على هواتفهم، ويسجلون الدخول برقم الهاتف وكلمة المرور، ولا يرون إلا تطبيق السائق.',
+    'Drivers ({})': m => `السائقون (${m[1]})`,
+    'Add as many drivers as you need. Each one gets their own phone number and password.': 'أضف عدد السائقين الذي تحتاجه. لكل سائق رقم هاتفه وكلمة مروره.',
+    'Add driver': 'إضافة سائق', 'No drivers yet. Press Add driver, type the name, the phone number and a password.': 'لا يوجد سائقون بعد. اضغط «إضافة سائق» واكتب الاسم ورقم الهاتف وكلمة المرور.',
+    'Driver': 'السائق', 'Phone (login)': 'الهاتف (للدخول)', 'Set password': 'تعيين كلمة المرور', 'Hide password': 'إخفاء كلمة المرور', 'Show password': 'إظهار كلمة المرور',
+    'Generate a password': 'إنشاء كلمة مرور', 'Could not add the driver.': 'تعذرت إضافة السائق.', 'Driver added': 'تمت إضافة السائق', 'Add a driver': 'إضافة سائق',
+    'Phone number (the login)': 'رقم الهاتف (للدخول)',
+    'The driver types this number to sign in. A number from another country: start with + and the country code.': 'يكتب السائق هذا الرقم لتسجيل الدخول. لرقم من دولة أخرى: ابدأ بـ + ثم رمز الدولة.',
+    'Password': 'كلمة المرور', 'At least': 'على الأقل', 'characters. You can send it to the driver on WhatsApp in the next step.': 'أحرف. يمكنك إرسالها للسائق عبر واتساب في الخطوة التالية.',
+    'Adding...': 'جارٍ الإضافة...', 'Could not change the password.': 'تعذر تغيير كلمة المرور.', 'Password changed': 'تم تغيير كلمة المرور',
+    'The old password stops working at once. The current password can never be shown: set a new one and give it to the driver.': 'تتوقف كلمة المرور القديمة عن العمل فورًا. لا يمكن عرض كلمة المرور الحالية أبدًا: عيّن كلمة جديدة وأعطها للسائق.',
+    'New password': 'كلمة المرور الجديدة',
+    'Give these details to the driver. For safety the password is not shown again after you close this window.': 'أعطِ هذه البيانات للسائق. للأمان لا تُعرض كلمة المرور مرة أخرى بعد إغلاق هذه النافذة.',
+    'Page': 'الصفحة', 'Copy the message': 'نسخ الرسالة',
+    'Remove {}? Their login stops working and their rides are deleted.': m => `هل تريد حذف ${m[1]}؟ سيتوقف دخوله وتُحذف رحلاته.`,
+    '{} was removed.': m => `تم حذف ${m[1]}.`, 'Remove {}': m => `حذف ${m[1]}`, 'New password for {}': m => `كلمة مرور جديدة لـ ${m[1]}`,
+};
+
+export default dict;

@@ -21,6 +21,10 @@ export interface Company {
     id: ID;
     name: string;
     logo?: string;
+    /** Booking page branding: main colour, soft background colour (both #rrggbb) and a short line under the name. */
+    brandColor?: string;
+    brandAccent?: string;
+    tagline?: string;
     workingHours?: string;
     serviceAreas?: string[];
     subscriptionPlan?: PlanId;
@@ -104,6 +108,10 @@ export interface Staff {
     age?: number;
     nationality?: string;
     photo?: string;
+    /** Introduction video. "sb:<path>" in the private staff-videos bucket (cloud mode). */
+    video?: string;
+    /** Where this cleaner lives (an accommodation id). The driver picks them up there. */
+    accommodationId?: string;
     rating: number; // 0-5
     completedJobsCount: number;
     revenueGenerated: number;
@@ -212,6 +220,10 @@ export interface MockDatabase {
     automations: AutomationRule[];
     auditLogs?: AuditLog[];
     platformPayments?: PlatformPayment[];
+    /** The platform admin's private notes about a tenant. Stored apart from the company row, which the tenant can read. */
+    tenantNotes?: TenantNote[];
     platformSettings?: PlatformSettings;
 }
+
+export interface TenantNote { id: string; tenantId: string; notes: string; createdAt: string }
 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft, ArrowRight, MessageCircle, Plus, Printer } from 'lucide-react';
 import {
-    addItem, dayLabel, fmt, fmt0, LEAD_STAGES, logActivity, mutateDB, nextNumber, printHtml, removeItem, today, updateItem, useCollection, useDB,
+    addItem, dayLabel, escHtml, fmt, fmt0, LEAD_STAGES, logActivity, mutateDB, nextNumber, printHtml, removeItem, today, updateItem, useCollection, useDB,
 } from '../services/erp';
 import type { InvoiceItem, Lead, Quote } from '../services/erp';
 import { addDays, format, parseISO } from 'date-fns';
@@ -126,10 +126,10 @@ const QuotesTab: React.FC<{ companyId: string }> = ({ companyId }) => {
         updateItem('quotes', q.id, { status });
         logActivity(companyId, user?.name || 'Owner', `Quote ${status}`, q.number);
     };
-    const print = (q: Quote) => printHtml(`Quote ${q.number}`, `<h1>Quote ${q.number}</h1><p class="muted">Valid until ${dayLabel(q.validUntil)}</p>
-        <p><b>${q.customerName}</b><br>${q.address}<br>${q.phone}</p>
+    const print = (q: Quote) => printHtml(`Quote ${q.number}`, `<h1>Quote ${escHtml(q.number)}</h1><p class="muted">Valid until ${dayLabel(q.validUntil)}</p>
+        <p><b>${escHtml(q.customerName)}</b><br>${escHtml(q.address)}<br>${escHtml(q.phone)}</p>
         <table><tr><th>Description</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Amount</th></tr>
-        ${q.items.map(i => `<tr><td>${i.description}</td><td class="r">${i.qty}</td><td class="r">${fmt(i.price)}</td><td class="r">${fmt(i.qty * i.price)}</td></tr>`).join('')}</table>
+        ${q.items.map(i => `<tr><td>${escHtml(i.description)}</td><td class="r">${escHtml(i.qty)}</td><td class="r">${fmt(i.price)}</td><td class="r">${fmt(i.qty * i.price)}</td></tr>`).join('')}</table>
         ${q.discount ? `<div class="tot"><span>Discount</span><span>-${fmt(q.discount)}</span></div>` : ''}<div class="tot big"><span>Total QAR</span><span>${fmt(total(q))}</span></div>`);
 
     return (

@@ -16,7 +16,7 @@ export const SuperAdminAuditLogs: React.FC = () => {
     const [limit, setLimit] = useState(50);
     const [dayAgo] = useState(() => new Date(Date.now() - 864e5).toISOString());
 
-    const all = db.auditLogs || [];
+    const all = useMemo(() => db.auditLogs || [], [db.auditLogs]);
     const rows = useMemo(() => {
         const cutoff = days === 'all' ? '' : format(addDays(new Date(), -Number(days)), 'yyyy-MM-dd');
         return all.filter(l => (kind === 'all' || l.type === kind)

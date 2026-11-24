@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useMemo, useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
     LayoutDashboard, CalendarDays, Users, Briefcase, Settings, UsersRound, Bell, BarChart3, Repeat, LogOut,
-    Truck, Target, Star, Sparkles, ClipboardCheck, Receipt, Wallet, FileBarChart, Package, History, SlidersHorizontal
+    Truck, Target, Star, Sparkles, ClipboardCheck, Receipt, Wallet, FileBarChart, Package, History, SlidersHorizontal, Menu, Car
 } from 'lucide-react';
 import { can } from '../../services/permissions';
 import type { PageKey } from '../../services/permissions';
@@ -11,13 +11,16 @@ import { getDB, saveDB } from '../../services/mockDb';
 import { dayLabel, useDB } from '../../services/erp';
 import type { Notification, Company } from '../../types';
 import { Brand } from '../shared/Brand';
-import { planName } from '../../services/plans';
+import { hasAiManager, planName } from '../../services/plans';
+import { DashLangButton } from '../shared/DashLang';
+import { useDashArabic } from '../shared/useDashArabic';
+import '../../erp.css';
 
 const NAV_GROUPS: { label: string; items: { key: PageKey; to: string; label: string; title: string; icon: React.ReactNode }[] }[] = [
     { label: 'Today', items: [
         { key: 'overview', to: '/app', label: 'Overview', title: 'Overview', icon: <LayoutDashboard size={16} /> },
-        { key: 'ai', to: '/app/ai', label: 'AI Manager', title: 'AI Manager', icon: <Sparkles size={16} /> },
         { key: 'dispatch', to: '/app/dispatch', label: 'Dispatch board', title: 'Dispatch board', icon: <Truck size={16} /> },
+        { key: 'drivers', to: '/app/drivers', label: 'Drivers', title: 'Drivers', icon: <Car size={16} /> },
         { key: 'bookings', to: '/app/bookings', label: 'Bookings', title: 'Bookings', icon: <CalendarDays size={16} /> },
     ] },
     { label: 'Customers', items: [
@@ -41,6 +44,7 @@ const NAV_GROUPS: { label: string; items: { key: PageKey; to: string; label: str
     { label: 'Business', items: [
         { key: 'activity', to: '/app/activity', label: 'Activity log', title: 'Activity log', icon: <History size={16} /> },
         { key: 'business', to: '/app/business', label: 'Business rules', title: 'Business rules', icon: <SlidersHorizontal size={16} /> },
+        { key: 'ai', to: '/app/ai', label: 'AI Manager', title: 'AI Manager', icon: <Sparkles size={16} /> },
     ] },
 ];
 
@@ -48,15 +52,20 @@ export const Layout: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, logout, isImpersonating, stopImpersonating } = useAuth();
+    useDashArabic();                                        // Arabic and right-to-left when the language button is set to Arabic
 
-    const [notifications, setNotifications] = useState<Notification[]>([]);
     const [showNotifications, setShowNotifications] = useState(false);
+    const [navOpen, setNavOpen] = useState(false);              // phones: the menu slides in
     const live = useDB();
     const broadcast = live.platformSettings?.broadcast;
     const maintenance = !!live.platformSettings?.maintenanceMode;
     const liveCompany = live.companies.find(c => c.id === user?.companyId);
-    const licenseDays = liveCompany?.licenseUntil ? Math.round((new Date(liveCompany.licenseUntil).getTime() - Date.now()) / 86400000) : null;
-    const [company, setCompany] = useState<Company | null>(null);
+    const [openedAt] = useState(() => Date.now());               // a fixed "now" for this visit keeps rendering pure
+    const licenseDays = liveCompany?.licenseUntil ? Math.round((new Date(liveCompany.licenseUntil).getTime() - openedAt) / 86400000) : null;
+    // Live: a new company name or a new notification shows at once, no polling needed
+    const company: Company | null = liveCompany || null;
+    const notifications = useMemo<Notification[]>(() => (live.notifications || []).filter(n => n.companyId === user?.companyId)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [live, user?.companyId]);
 
     const handleReturnToSuperAdmin = () => {
         stopImpersonating();
@@ -68,29 +77,12 @@ export const Layout: React.FC = () => {
         navigate('/login');
     };
 
-    useEffect(() => {
-        const db = getDB();
-        if (user?.companyId) {
-            const foundCo = db.companies.find(c => c.id === user.companyId);
-            setCompany(foundCo || null);
-
-            const loadNotifications = () => {
-                const currentDb = getDB();
-                setNotifications((currentDb.notifications || []).filter(n => n.companyId === user.companyId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-            };
-            loadNotifications();
-            const interval = setInterval(loadNotifications, 5000);
-            return () => clearInterval(interval);
-        }
-    }, [user?.companyId]);
-
     const markAsRead = (id: string) => {
         const db = getDB();
         const notification = db.notifications?.find(n => n.id === id);
         if (notification) {
             notification.read = true;
-            saveDB(db);
-            setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+            saveDB(db);                      // the live list above updates by itself
         }
     };
 
@@ -175,7 +167,10 @@ export const Layout: React.FC = () => {
 
             <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
                 {/* Minimalist SaaS Sidebar */}
-                <aside style={{
+                {navOpen && <div className="app-scrim" onClick={() => setNavOpen(false)} aria-hidden="true" />}
+                <aside id="app-nav" className={`app-side${navOpen ? ' open' : ''}`}
+                    onClick={e => { if ((e.target as HTMLElement).closest('a,button')) setNavOpen(false); }}
+                    style={{
                     width: 'var(--sidebar-width)',
                     backgroundColor: 'var(--color-bg-surface)',
                     padding: '1.5rem 0.875rem',
@@ -221,6 +216,9 @@ export const Layout: React.FC = () => {
                                         <Link key={i.key} to={i.to} style={navItemStyle(i.to)} aria-current={navItemStyle(i.to).fontWeight === 600 ? 'page' : undefined}>
                                             {i.icon}
                                             <span>{i.label}</span>
+                                            {i.key === 'ai' && !hasAiManager(company?.subscriptionPlan) && (
+                                                <span style={{ marginInlineStart: 'auto', fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-tertiary)', background: 'var(--color-bg-body)', borderRadius: 999, padding: '0.1rem 0.5rem' }}>Soon</span>
+                                            )}
                                         </Link>
                                     ))}
                                 </React.Fragment>
@@ -255,24 +253,29 @@ export const Layout: React.FC = () => {
                 {/* Main Content Viewport */}
                 <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', backgroundColor: 'var(--color-bg-body)' }}>
                     {/* Header */}
-                    <header style={{
+                    <header className="app-header" style={{
                         height: '64px',
                         backgroundColor: 'var(--color-bg-body)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
+                        gap: '0.75rem',
                         padding: '0 1.75rem',
                         flexShrink: 0
                     }}>
                         {/* Breadcrumbs */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem' }}>
-                            <span style={{ color: 'var(--color-text-tertiary)' }}>{company?.name || 'Workspace'}</span>
-                            <span style={{ color: 'var(--color-text-tertiary)' }}>/</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', minWidth: 0 }}>
+                            <button type="button" className="app-menu-btn" onClick={() => setNavOpen(true)} aria-label="Open the menu" aria-controls="app-nav" aria-expanded={navOpen}>
+                                <Menu size={20} />
+                            </button>
+                            <span className="app-crumb-co" style={{ color: 'var(--color-text-tertiary)' }}>{company?.name || 'Workspace'}</span>
+                            <span className="app-crumb-co" style={{ color: 'var(--color-text-tertiary)' }}>/</span>
                             <span style={{ fontWeight: 600, fontSize: '1.0625rem', letterSpacing: '-0.02em', color: 'var(--color-text-primary)' }}>{getPageTitle()}</span>
                         </div>
 
                         {/* Right Area: Notifications & User */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <DashLangButton />
                             {/* Notification Bell */}
                             <div style={{ position: 'relative' }}>
                                 <button
@@ -345,7 +348,9 @@ export const Layout: React.FC = () => {
 
                     {/* Page Content Viewport */}
                     <div style={{ flex: 1, overflowY: 'auto', padding: '1.75rem 2rem' }}>
-                        <Outlet />
+                        <Suspense fallback={<div role="status" style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--color-text-tertiary)' }}>Loading...</div>}>
+                            <Outlet />
+                        </Suspense>
                     </div>
                 </main>
             </div>

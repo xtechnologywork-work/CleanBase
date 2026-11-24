@@ -1,24 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { getDB, saveDB } from '../services/mockDb';
 import type { Client, Subscription, Service, Staff, User, Booking } from '../types';
 import {
     Plus, Search, Phone, MapPin, User as UserIcon, Edit2, Trash2, X,
     AlertTriangle, Repeat, UserCheck, Calendar, Clock
 } from 'lucide-react';
-import { clientLifetimePaid, useCollection } from '../services/erp';
+import { clientLifetimePaid, useCollection, useDB } from '../services/erp';
 import { useAuth } from '../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 
 export const ClientsPage: React.FC = () => {
-    const [clients, setClients] = useState<Client[]>([]);
-    const { user: authUser } = useAuth();
-    useCollection('payments', authUser?.companyId || '');
-    useCollection('invoices', authUser?.companyId || '');
+    const { user } = useAuth();
+    const cid = user?.companyId;
+    useCollection('payments', cid || '');
+    useCollection('invoices', cid || '');
     const spentOf = (c: Client) => clientLifetimePaid(c.companyId, c.id);
-    const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-    const [services, setServices] = useState<Service[]>([]);
-    const [staffList, setStaffList] = useState<(Staff & { user: User })[]>([]);
-    const [bookings, setBookings] = useState<Booking[]>([]);
+    // Live data: new clients from the booking page or another device show up without a reload
+    const live = useDB();
+    const clients = useMemo<Client[]>(() => live.clients.filter(c => c.companyId === cid), [live, cid]);
+    const subscriptions = useMemo<Subscription[]>(() => (live.subscriptions || []).filter(s => s.companyId === cid), [live, cid]);
+    const services = useMemo<Service[]>(() => live.services.filter(s => s.companyId === cid), [live, cid]);
+    const bookings = useMemo<Booking[]>(() => live.bookings.filter(b => b.companyId === cid), [live, cid]);
+    const staffList = useMemo<(Staff & { user: User })[]>(() => live.staff.filter(s => s.companyId === cid)
+        .map(s => ({ ...s, user: live.users.find(u => u.id === s.userId)! })).filter(s => s.user !== undefined), [live, cid]);
 
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,32 +32,9 @@ export const ClientsPage: React.FC = () => {
     const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
     const [formData, setFormData] = useState({ name: '', phone: '', address: '' });
 
-    const { user } = useAuth();
     const navigate = useNavigate();
-
-    useEffect(() => {
-        if (user?.companyId) {
-            loadData();
-        }
-    }, [user?.companyId]);
-
-    const loadData = () => {
-        if (!user?.companyId) return;
-        const db = getDB();
-        setClients(db.clients.filter(c => c.companyId === user.companyId));
-        setSubscriptions(db.subscriptions?.filter(s => s.companyId === user.companyId) || []);
-        setServices(db.services.filter(s => s.companyId === user.companyId));
-        setBookings(db.bookings.filter(b => b.companyId === user.companyId));
-
-        const joinedStaff = db.staff
-            .filter(s => s.companyId === user.companyId)
-            .map(s => {
-                const u = db.users.find(u => u.id === s.userId);
-                return { ...s, user: u! };
-            })
-            .filter(s => s.user !== undefined);
-        setStaffList(joinedStaff);
-    };
+    // Saving writes to the shared store, which refreshes the live data above
+    const loadData = () => undefined;
 
     const getClientSubscriptions = (clientId: string) => {
         return subscriptions.filter(s => s.clientId === clientId);
@@ -69,25 +50,32 @@ export const ClientsPage: React.FC = () => {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (!cid) return;
+        if (!formData.name.trim()) { alert('Enter the client name.'); return; }
         const db = getDB();
+
+        // One person should have one record: warn when another client already uses this phone number (the customer portal finds clients by phone)
+        const digits = formData.phone.replace(/\D/g, '');
+        const same = digits.length >= 6 ? db.clients.find(c => c.companyId === cid && c.id !== editingClientId && c.phone.replace(/\D/g, '') === digits) : undefined;
+        if (same && !confirm(`${same.name} already has this phone number. Save as a separate client anyway?`)) return;
 
         if (editingClientId) {
             const index = db.clients.findIndex(c => c.id === editingClientId);
             if (index !== -1) {
                 db.clients[index] = {
                     ...db.clients[index],
-                    name: formData.name,
-                    phone: formData.phone,
-                    address: formData.address
+                    name: formData.name.trim(),
+                    phone: formData.phone.trim(),
+                    address: formData.address.trim()
                 };
             }
         } else {
             const newClient: Client = {
                 id: `client-${Date.now()}`,
-                companyId: user?.companyId || 'c1',
-                name: formData.name,
-                phone: formData.phone,
-                address: formData.address,
+                companyId: cid,
+                name: formData.name.trim(),
+                phone: formData.phone.trim(),
+                address: formData.address.trim(),
                 totalSpent: 0,
                 createdAt: new Date().toISOString()
             };
