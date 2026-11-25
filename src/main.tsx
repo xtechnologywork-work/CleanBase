@@ -4,6 +4,7 @@ import App from './App.tsx';
 import './index.css';
 import { initDB } from './services/mockDb';
 import { isCloud } from './services/backend';
+import { ErrorBoundary } from './components/shared/ErrorBoundary';
 
 // A live site built without its database keys would silently fall back to the local demo (sample accounts, data that never reaches the server).
 // Stop it with a clear message instead. Set VITE_ALLOW_DEMO=true to publish a demo on purpose.
@@ -22,7 +23,9 @@ if (missingKeys) {
   initDB();
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
-      <App />
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
     </React.StrictMode>,
   );
 }

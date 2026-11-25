@@ -12,6 +12,8 @@ const page = <M extends Record<string, ComponentType<any>>>(load: () => Promise<
 
 const LandingPage = page(() => import('./pages/LandingPage'), 'LandingPage');
 const RegisterPage = page(() => import('./pages/RegisterPage'), 'RegisterPage');
+const TermsPage = page(() => import('./pages/LegalPages'), 'TermsPage');
+const PrivacyPage = page(() => import('./pages/LegalPages'), 'PrivacyPage');
 const ForgotPasswordPage = page(() => import('./pages/PasswordResetPages'), 'ForgotPasswordPage');
 const ResetPasswordPage = page(() => import('./pages/PasswordResetPages'), 'ResetPasswordPage');
 const DashboardPage = page(() => import('./pages/DashboardPage'), 'DashboardPage');
@@ -111,6 +113,8 @@ function App() {
           <Route path="/store/:companyId" element={<PublicBookingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/portal" element={<ClientPortalPage />} />

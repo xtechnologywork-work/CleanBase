@@ -6,6 +6,7 @@ import { ChatWidget } from '../../components/shared/ChatWidget';
 import { useNavigate } from 'react-router-dom';
 import { isCloud } from '../../services/backend';
 import { CloudPortal } from './CloudPortal';
+import { Brand } from '../../components/shared/Brand';
 
 const LocalPortal: React.FC = () => {
     // Demo mode only: shows the first client of this browser (the online portal signs the client in by phone)
@@ -46,7 +47,7 @@ const LocalPortal: React.FC = () => {
             {/* Nav */}
             <header style={{ backgroundColor: 'var(--color-bg-surface)', borderBottom: '1px solid var(--color-border)', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <img src="/logo.jpg" alt="Cleanbase" style={{ height: '32px' }} />
+                    <Brand size={22} />
                     <span style={{ fontWeight: 600, fontSize: '1.25rem', color: 'var(--color-text-secondary)', marginLeft: '1rem', borderLeft: '1px solid var(--color-border)', paddingLeft: '1rem' }}>Client Portal</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>

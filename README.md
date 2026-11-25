@@ -14,7 +14,8 @@ Built with Vite, React 19 and TypeScript. Data lives in the browser (demo mode) 
 - **Contracts:** recurring subscriptions, contract templates written by each company, signing, monthly payment tracking, cancellation with reason and exact time, printing.
 - **Money:** invoices and payments, expenses, payroll, and the late-payment view.
 - **Team hub:** attendance, leave, documents with photos, payroll, performance.
-- **AI Manager:** answers questions about the business in English, Arabic or Darija, using the company's own numbers.
+- **AI Manager:** shown as "Coming soon" in the menu for now. The engine and the optional Edge Function are in the code and tested.
+- **Arabic dashboard:** an English / Arabic switch next to the bell translates the whole company dashboard and flips it right to left.
 
 **For the platform admin**
 - Tenants, billing, plans, audit log and platform analytics. Sets a new password for a tenant (passwords are never shown).
@@ -34,6 +35,16 @@ With no environment file the app runs in **local demo mode**: everything is stor
 2. Follow [`supabase/README.md`](supabase/README.md): run `supabase/MASTER_SETUP.sql` in the SQL Editor and create the platform admin.
 3. Restart `npm run dev`.
 
+## Go live checklist
+
+1. **Supabase:** create the project, run `supabase/MASTER_SETUP.sql` in the SQL Editor, then run `supabase/HEALTH_CHECK.sql` and confirm every line says OK.
+2. **Auth settings:** Authentication, Email: turn off "Confirm email" (or add your own email sender). Authentication, URL Configuration: set the Site URL and add your live address to the redirect URLs.
+3. **Edge Functions:** deploy `admin-set-password` and `driver-admin` (steps in `supabase/README.md`).
+4. **Platform admin:** run `select public.cb_make_superadmin('you@example.com', 'Your Name');`, then sign up with that email.
+5. **Hosting (Vercel, Netlify or similar):** build command `npm run build`, output folder `dist`. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as environment variables (never the service key). `vercel.json` and `public/_redirects` already send every address to the app, so links such as `/app/bookings` work after a refresh.
+6. **Test once on the live site:** sign up a test company, approve it from the admin, add a cleaner and a client, create a booking, and open the booking store link.
+7. **Before selling:** have the Terms and Privacy pages (`/terms`, `/privacy`) reviewed for your business and country, and set up database backups in Supabase (Pro plan has daily backups).
+
 ## Scripts
 
 | Command | What it does |
@@ -45,6 +56,7 @@ With no environment file the app runs in **local demo mode**: everything is stor
 | `npm run test:sync` | Local cache and Supabase sync layer |
 | `npm run test:ai` | AI Manager engine |
 | `npm run test:store` | Booking store availability rules and insights |
+| `npm run test:trips`, `test:reservations`, `test:driveraccounts` ... | Driver rides, cleaner reservations, driver logins (see `package.json` for all) |
 | `node supabase/build-master.cjs` | Rebuild `MASTER_SETUP.sql` from the migrations |
 
 ## Project layout

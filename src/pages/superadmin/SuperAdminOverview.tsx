@@ -42,6 +42,13 @@ export const SuperAdminOverview: React.FC = () => {
         <div className="pg">
             <PageHeader title="Platform overview" subtitle="How CleanBase is doing as a business: customers, recurring revenue, and what needs your decision today." />
 
+            {pending.length > 0 && (
+                <div className="attn" role="status" style={{ cursor: 'default', marginBottom: '1rem', background: 'var(--color-warning-bg)' }}>
+                    <span><b>{pending.length === 1 ? '1 new company is' : `${pending.length} new companies are`} waiting for your approval</b>
+                        <div className="tiny">{pending.slice(0, 3).map(t => t.company.name || 'Unnamed company').join(', ')}{pending.length > 3 ? ` and ${pending.length - 3} more` : ''}. They stay on the "under review" screen until you approve them.</div></span>
+                    <button className="btn btn-primary btn-sm" onClick={() => navigate('/admin/tenants')}>Review now</button>
+                </div>
+            )}
             <div className="kpis">
                 <Kpi label="Active tenants" icon={<Building2 size={16} />} value={totals.active} hint={`${totals.total} registered in total`} />
                 <Kpi label="Monthly recurring revenue" icon={<TrendingUp size={16} />} value={fmt0(totals.mrr)} unit="QAR" hint={`${fmt0(totals.arr)} QAR a year`} />
@@ -61,7 +68,7 @@ export const SuperAdminOverview: React.FC = () => {
                         <div className="stack" style={{ gap: '0.5rem' }}>
                             {pending.map(t => (
                                 <div className="attn" key={t.company.id} style={{ cursor: 'default' }}>
-                                    <span><b>{t.company.name || 'Unnamed company'}</b> wants access<div className="tiny">{t.owner?.email} · {PLAN_LABEL[t.plan]}</div></span>
+                                    <span><b>{t.company.name || 'Unnamed company'}</b> wants access<div className="tiny">{t.owner?.name && t.owner.name !== t.owner.email.split('@')[0] ? `${t.owner.name} · ` : ''}{t.owner?.email}{t.company.phone ? ` · ${t.company.phone}` : ''} · signed up {t.company.createdAt ? format(parseISO(t.company.createdAt), 'd MMM, HH:mm') : ''}</div></span>
                                     <span style={{ display: 'flex', gap: 6 }}>
                                         <button className="btn btn-secondary btn-sm" onClick={() => navigate('/admin/tenants')}>Review</button>
                                         <button className="btn btn-primary btn-sm" onClick={() => { approveTenant(t.company.id); }}>Approve</button>

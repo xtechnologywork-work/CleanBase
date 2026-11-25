@@ -19,7 +19,8 @@
     "test:trips": "node --test tests/trips.test.mjs",
     "test:driveri18n": "node --test tests/driveri18n.test.mjs",
     "test:driveraccounts": "node --test tests/driveraccounts.test.mjs",
-    "test:reservations": "node --test tests/reservations.test.mjs"
+    "test:reservations": "node --test tests/reservations.test.mjs",
+    "test:phone": "node --test tests/phone.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",

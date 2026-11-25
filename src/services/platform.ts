@@ -121,7 +121,7 @@ export function approveTenant(companyId: string) {
         name = co.name;
         db.users.forEach(u => { if (u.companyId === companyId && u.role !== 'superadmin') u.status = 'active'; });
         co.approvedAt = co.approvedAt || new Date().toISOString();
-        if (!co.licenseUntil) co.licenseUntil = format(addDays(new Date(), 14), 'yyyy-MM-dd');   // the 14 day free trial promised at sign up
+        if (!co.licenseUntil) co.licenseUntil = format(addDays(new Date(), 14), 'yyyy-MM-dd');   // a first 14 day license; the platform admin sets the real end date from the Tenants page
     });
     logAudit(`Approved tenant ${name}`, name, 'security');
 }

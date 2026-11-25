@@ -4,6 +4,7 @@ import { isCloud, supabase, sb } from '../services/backend';
 import { fromProfile, startReplication, stopReplication } from '../services/replicate';
 import type { PlanId, User } from '../types';
 import { PLANS } from '../services/plans';
+import { fullPhone } from '../services/phone';
 
 type Plan = PlanId;
 
@@ -17,7 +18,7 @@ interface AuthContextType {
     ready: boolean;
     isAuthenticated: boolean;
     login: (email: string, password?: string) => Promise<LoginResult>;
-    register: (email: string, companyName: string, subscriptionPlan: Plan, password?: string) => Promise<RegisterResult>;
+    register: (email: string, companyName: string, subscriptionPlan: Plan, password?: string, fullName?: string, phone?: string) => Promise<RegisterResult>;
     /** Email a link to choose a new password. Cloud only. */
     requestPasswordReset: (email: string) => Promise<{ error?: string }>;
     logout: () => void;
@@ -70,10 +71,11 @@ async function ensureCloudProfile(): Promise<User | null> {
     if (existing) return existing;
     const client = sb();
     const { data: { session } } = await client.auth.getSession();
-    const meta = (session?.user.user_metadata || {}) as { company_name?: string; plan?: string };
+    const meta = (session?.user.user_metadata || {}) as { company_name?: string; plan?: string; full_name?: string; phone?: string };
     if (!session || !meta.company_name?.trim()) return null;
     const { error } = await client.rpc('register_company', {
-        p_company_name: meta.company_name.trim(), p_plan: meta.plan === 'ai_master' ? 'ai_master' : 'pro', p_name: (session.user.email || '').split('@')[0],
+        p_company_name: meta.company_name.trim(), p_plan: meta.plan === 'ai_master' ? 'ai_master' : 'pro', p_name: (meta.full_name || '').trim().slice(0, 80) || (session.user.email || '').split('@')[0],
+        p_phone: /^\+\d{8,15}$/.test(meta.phone || '') ? meta.phone : '',
     });
     if (error && !/already has a profile/i.test(error.message)) throw error;
     return loadCloudProfile();
@@ -142,7 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const profile = await ensureCloudProfile();
                 if (!profile) {
                     await client.auth.signOut();
-                    return { user: null, error: 'This account has no company yet. Use "Start for free" to create one, or ask your company admin to invite this email.' };
+                    return { user: null, error: 'This account has no company yet. Use "Create an account" to set one up, or ask your company admin to invite this email.' };
                 }
                 safeDel(BACKUP_KEY); safeDel(TARGET_KEY); setIsImpersonating(false);
                 await startReplication(profile);
@@ -162,9 +164,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { user: found };
     };
 
-    const register = async (email: string, companyName: string, subscriptionPlan: Plan, password?: string): Promise<RegisterResult> => {
+    const register = async (email: string, companyName: string, subscriptionPlan: Plan, password?: string, fullName?: string, phone?: string): Promise<RegisterResult> => {
         const mail = normEmail(email);
         const company = companyName.trim();
+        const contact = phone ? fullPhone(phone) : null;
+        if (company && !contact) return { ok: false, error: 'Enter your contact number: the 8 digits after +974.' };
+        const person = (fullName || '').trim().replace(/\s+/g, ' ').slice(0, 80) || mail.split('@')[0];
         if (!password || password.length < 8) return { ok: false, error: 'Choose a password with at least 8 characters.' };
         if (company && (company.length < 2 || company.length > 120)) return { ok: false, error: 'The company name must be 2 to 120 characters.' };
         if (isCloud) {
@@ -175,7 +180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 // after the person confirms their email and signs in.
                 let { data, error } = await client.auth.signUp({
                     email: mail, password,
-                    options: { data: company ? { company_name: company, plan: subscriptionPlan } : {}, emailRedirectTo: `${window.location.origin}/login` },
+                    options: { data: company ? { company_name: company, plan: subscriptionPlan, full_name: person, phone: contact } : {}, emailRedirectTo: `${window.location.origin}/login` },
                 });
                 if (error && /already/i.test(error.message)) {
                     // Finishing a sign-up that was interrupted: sign in instead.
@@ -199,7 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         await client.auth.signOut();
                         return { ok: false, error: 'This email was not invited by a company. Enter your company name to create a new one.' };
                     }
-                    const { error: rpcError } = await client.rpc('register_company', { p_company_name: company, p_plan: subscriptionPlan, p_name: mail.split('@')[0] });
+                    const { error: rpcError } = await client.rpc('register_company', { p_company_name: company, p_plan: subscriptionPlan, p_name: person, p_phone: contact || '' });
                     if (rpcError) { await client.auth.signOut(); return { ok: false, error: rpcError.message }; }
                     profile = await loadCloudProfile();
                 }
@@ -219,9 +224,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (db.users.find(u => normEmail(u.email) === mail)) return { ok: false, error: 'That email already has an account. Sign in instead.' };
         const newCompanyId = `c-${Date.now()}`;
         const monthlyRevenue = PLANS[subscriptionPlan]?.price ?? 0;   // the AI plan is priced with the customer, so it starts at 0
-        db.companies.push({ id: newCompanyId, name: companyName, subscriptionPlan, monthlyRevenue, createdAt: new Date().toISOString() });
+        db.companies.push({ id: newCompanyId, name: companyName, phone: contact || undefined, subscriptionPlan, monthlyRevenue, createdAt: new Date().toISOString() });
         const newUser: User = {
-            id: `u-${Date.now()}`, email, password, name: email.split('@')[0], role: 'companyadmin',
+            id: `u-${Date.now()}`, email, password, name: person, role: 'companyadmin',
             companyId: newCompanyId, status: 'locked', createdAt: new Date().toISOString(),
         };
         db.users.push(newUser);

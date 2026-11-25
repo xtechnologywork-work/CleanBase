@@ -1462,3 +1462,96 @@ begin
 end $$;
 revoke all on function public.public_request_booking(text, text, text, text, text, text, text, text, text) from public;
 grant execute on function public.public_request_booking(text, text, text, text, text, text, text, text, text) to anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- PART: 0016_collection_views.sql
+-- ---------------------------------------------------------------------------
+-- One readable view per collection, so Supabase's Table Editor shows bookings, clients, invoices, staff...
+-- as separate tables with a column for every field.
+--
+-- The app keeps writing to public.records (that is where row level security lives). These views only READ it:
+--   * they run with the caller's rights (security_invoker), so they can never show more than records allows;
+--   * the app roles (anon, authenticated) get no access to them at all: they are for you in the dashboard.
+-- Columns come from the fields found in your data. After new kinds of data appear, run again:
+--   select public.cb_refresh_collection_views();
+
+create or replace function public.cb_refresh_collection_views() returns text language plpgsql as $$
+declare
+    c text;
+    vname text;
+    cols text;
+    rk "char";
+    n int := 0;
+begin
+    for c in select distinct collection from public.records where collection ~ '^[A-Za-z][A-Za-z0-9]*$' loop
+        vname := lower(regexp_replace(c, '([a-z0-9])([A-Z])', '\1_\2', 'g'));
+        -- never replace a real table or function-backed relation that is not one of these views
+        select relkind into rk from pg_class where relnamespace = 'public'::regnamespace and relname = vname;
+        if rk is not null and rk <> 'v' then continue; end if;
+
+        select string_agg(format('r.data ->> %L as %I', k, k), ', ' order by k) into cols
+        from (
+            select distinct k
+            from public.records r,
+                 jsonb_object_keys(case when jsonb_typeof(r.data) = 'object' then r.data else '{}'::jsonb end) as k
+            where r.collection = c
+              and k ~ '^[A-Za-z_][A-Za-z0-9_]*$'
+              and k not in ('id', 'company_id', 'updated_at', 'data')
+            limit 60
+        ) s;
+
+        execute format('drop view if exists public.%I', vname);
+        execute format(
+            'create view public.%I with (security_invoker = true) as select r.id, r.company_id, r.updated_at%s, r.data from public.records r where r.collection = %L',
+            vname, case when cols is null then '' else ', ' || cols end, c);
+        execute format('revoke all on public.%I from anon, authenticated', vname);
+        n := n + 1;
+    end loop;
+    return n || ' views created or refreshed';
+end $$;
+
+revoke all on function public.cb_refresh_collection_views() from public, anon, authenticated;
+
+select public.cb_refresh_collection_views();
+
+-- ---------------------------------------------------------------------------
+-- PART: 0017_signup_phone.sql
+-- ---------------------------------------------------------------------------
+-- Sign up asks for a contact phone number, so the platform admin can reach a new company while it waits for approval.
+-- The number is kept on the company record (data.phone). It is optional here, so a sign-up started before this
+-- update (email confirmation still pending) can finish; the sign-up page itself requires it.
+
+drop function if exists public.register_company(text, text, text);
+
+create or replace function public.register_company(p_company_name text, p_plan text, p_name text default '', p_phone text default '')
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+    uid uuid := auth.uid();
+    em text;
+    stamp text := (extract(epoch from clock_timestamp()) * 1000)::bigint::text;
+    cid text := 'c-' || stamp;
+    pid text := 'u-' || stamp;
+    revenue int;
+    phone text := nullif(trim(coalesce(p_phone, '')), '');
+begin
+    if uid is null then raise exception 'You must be signed in'; end if;
+    if exists (select 1 from public.profiles where auth_id = uid) then raise exception 'This account already has a profile'; end if;
+    if p_plan not in ('pro','ai_master') then raise exception 'Unknown plan'; end if;
+    if length(trim(coalesce(p_company_name, ''))) < 2 or length(p_company_name) > 120 then raise exception 'Company name looks wrong'; end if;
+    if phone is not null and phone !~ '^\+[0-9]{8,15}$' then raise exception 'Phone number looks wrong'; end if;
+    select email into em from auth.users where id = uid;
+    -- The AI Master plan is priced with each customer: it starts at 0 and the platform admin sets the agreed amount.
+    revenue := case p_plan when 'pro' then 500 else 0 end;
+
+    perform set_config('cb.bypass', '1', true);
+    insert into public.records (collection, id, company_id, data) values (
+        'companies', cid, cid,
+        jsonb_strip_nulls(jsonb_build_object('id', cid, 'name', trim(p_company_name), 'subscriptionPlan', p_plan, 'monthlyRevenue', revenue,
+            'phone', phone, 'createdAt', now()))
+    );
+    insert into public.profiles (id, auth_id, email, name, role, company_id, status)
+    values (pid, uid, em, coalesce(nullif(trim(p_name), ''), split_part(em, '@', 1)), 'companyadmin', cid, 'locked');
+    return jsonb_build_object('profileId', pid, 'companyId', cid);
+end $$;
+revoke all on function public.register_company(text, text, text, text) from public, anon;
+grant execute on function public.register_company(text, text, text, text) to authenticated;

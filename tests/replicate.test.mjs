@@ -26,6 +26,7 @@ addEventListener('cleanbase-sync', e => syncEvents.push(e.detail));
 const server = { records: [], profiles: [] };
 const calls = [];
 let failWith = null;           // set to an error object to make writes fail
+let failFor = null;            // (kind, table, payload) => error object | null: make only some writes fail
 const handlers = [];           // realtime handlers
 
 const thenable = (run) => ({ then: (ok, bad) => Promise.resolve().then(run).then(ok, bad) });
@@ -43,6 +44,7 @@ function fakeClient() {
                     return thenable(() => {
                         calls.push(['insert', table, list.length]);
                         if (failWith) return { error: failWith };
+                        const bad = failFor?.('insert', table, list); if (bad) return { error: bad };
                         list.forEach(r => rows().push(structuredClone(r)));
                         return { error: null };
                     });
@@ -54,6 +56,7 @@ function fakeClient() {
                         then: (ok, bad) => Promise.resolve().then(() => {
                             calls.push(['update', table, JSON.stringify(eq)]);
                             if (failWith) return { error: failWith };
+                            const bad = failFor?.('update', table, { eq, patch }); if (bad) return { error: bad };
                             rows().filter(r => Object.entries(eq).every(([c, v]) => r[c] === v)).forEach(r => Object.assign(r, structuredClone(patch)));
                             return { error: null };
                         }).then(ok, bad),
@@ -109,7 +112,7 @@ const tick = (ms = 700) => new Promise(r => setTimeout(r, ms));
 const owner = { id: 'u-own', email: 'o@x.test', name: 'Owner', role: 'companyadmin', companyId: 'c1', status: 'active', createdAt: '2026-01-01T00:00:00.000Z' };
 
 beforeEach(async () => {
-    store.clear(); calls.length = 0; syncEvents.length = 0; failWith = null; handlers.length = 0;
+    store.clear(); calls.length = 0; syncEvents.length = 0; failWith = null; failFor = null; handlers.length = 0;
     server.records = [
         { collection: 'companies', id: 'c1', company_id: 'c1', data: { id: 'c1', name: 'Co One', createdAt: 'x' } },
         { collection: 'clients', id: 'cl1', company_id: 'c1', data: { id: 'cl1', companyId: 'c1', name: 'Alice', phone: '1', address: 'A', totalSpent: 0, createdAt: 'x' } },
@@ -273,3 +276,36 @@ test('silent re-sync: picks up missed changes, and does nothing when nothing cha
     assert.equal(syncEvents.length, before);
 });
 
+test('a refused change never undoes the ones that were accepted: a new cleaner survives a refused booking edit', async () => {
+    // the database refuses edits to bookings (for example a rule on that collection) ...
+    failFor = (kind, table, payload) => (kind === 'update' && table === 'records' && payload.eq.collection === 'bookings')
+        ? { code: '42501', message: 'new row violates row-level security policy' } : null;
+    const db = dbm.getDB();
+    db.bookings[0].status = 'cancelled';                                   // refused
+    db.users.push({ id: 'u-c3', email: 'c3@x.test', name: 'Cleaner Three', role: 'cleaner', companyId: 'c1', createdAt: '2026-01-05T00:00:00.000Z' });
+    db.staff.push({ id: 'staff-c3', companyId: 'c1', userId: 'u-c3', phone: '1', rating: 5, completedJobsCount: 0, revenueGenerated: 0, createdAt: '2026-01-05T00:00:00.000Z' });
+    dbm.saveDB(db);
+    await tick();
+    failFor = null;
+    // ... but the cleaner (login profile and staff record) is saved and stays on screen
+    assert.ok(server.profiles.find(p => p.id === 'u-c3'), 'profile saved');
+    assert.ok(server.records.find(r => r.collection === 'staff' && r.id === 'staff-c3'), 'staff record saved');
+    assert.ok(dbm.getDB().staff.find(s => s.id === 'staff-c3'), 'cleaner still shown');
+    assert.ok(dbm.getDB().users.find(u => u.id === 'u-c3'));
+    // the refused edit is the only thing rolled back, and the person is told
+    assert.equal(dbm.getDB().bookings[0].status, 'confirmed');
+    assert.ok(syncEvents.some(e => e.state === 'error'));
+});
+
+test('one refused row in a group does not stop the other rows of that group', async () => {
+    failFor = (kind, table, list) => (kind === 'insert' && table === 'records' && Array.isArray(list) && list.some(r => r.id === 'cl-bad'))
+        && list.length > 1 ? { code: '23514', message: 'check violation' } : (kind === 'insert' && table === 'records' && list.length === 1 && list[0].id === 'cl-bad' ? { code: '23514', message: 'check violation' } : null);
+    const db = dbm.getDB();
+    const mk = id => ({ id, companyId: 'c1', name: id, phone: '1', address: 'A', totalSpent: 0, createdAt: 'x' });
+    db.clients.push(mk('cl-ok1'), mk('cl-bad'), mk('cl-ok2'));
+    dbm.saveDB(db);
+    await tick();
+    failFor = null;
+    assert.ok(server.records.find(r => r.id === 'cl-ok1') && server.records.find(r => r.id === 'cl-ok2'), 'good rows saved');
+    assert.equal(server.records.find(r => r.id === 'cl-bad'), undefined);
+});

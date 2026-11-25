@@ -1,14 +1,13 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Brand } from '../components/shared/Brand';
-import { PLANS, SELLABLE } from '../services/plans';
 import '../landing.css';
 
 /* ---------- content ---------- */
 
-const PHONE_DISPLAY = '+974 5170 4550';
-const PHONE_TEL = 'tel:+97451704550';
-const WHATSAPP = 'https://wa.me/97451704550';
+const PHONE_DISPLAY = '+974 72262228';
+const PHONE_TEL = 'tel:+97472262228';
+const WHATSAPP = 'https://wa.me/97472262228';
 
 interface Job {
     id: string;
@@ -129,7 +128,7 @@ export const LandingPage: React.FC = () => {
                     <nav className="lp-nav-links" aria-label="Sections">
                         <a href="#solutions">Solutions</a>
                         <a href="#how">How it works</a>
-                        <a href="#pricing">Pricing</a>
+                        <a href="#contact">Contact us</a>
                     </nav>
                     <div className="lp-nav-actions">
                         <Link to="/login" className="lp-btn lp-btn-ghost lp-btn-sm">Login</Link>
@@ -295,61 +294,20 @@ export const LandingPage: React.FC = () => {
                     </div>
                 </section>
 
-                {/* Pricing */}
-                <section id="pricing" className="lp-tile lp-dark" aria-labelledby="pricing-title">
-                    <div className="lp-wrap">
-                        <h2 id="pricing-title" className="lp-h2" data-r style={{ ['--d' as string]: 0 }}>
-                            Two plans. No limits.
-                        </h2>
-                        <p className="lp-lead" data-r style={{ ['--d' as string]: 1, marginTop: 20, maxWidth: '34em' }}>
-                            Every plan includes the whole platform, with no cap on cleaners, clients or bookings.
-                        </p>
-
-                        <div className="lp-plans">
-                            {SELLABLE.map((id, i) => {
-                                const p = PLANS[id];
-                                const ai = id === 'ai_master';
-                                return (
-                                    <article key={id} className={`lp-plan ${ai ? 'lp-plan-feature' : ''}`} data-r style={{ ['--d' as string]: i }}>
-                                        <div className="lp-plan-name">
-                                            {p.name}
-                                            {ai && <span className="lp-tag">AI manager</span>}
-                                        </div>
-                                        <div className="lp-price">
-                                            {p.price === null
-                                                ? <><b>Custom</b><span>priced with you</span></>
-                                                : <><b>{p.price.toLocaleString('en-US')}</b><span>QAR / month</span></>}
-                                        </div>
-                                        <p className="lp-save" style={{ fontWeight: 400, opacity: 0.9 }}>{p.tagline}</p>
-                                        <ul>{p.features.map(feat => <li key={feat}>{feat}</li>)}</ul>
-                                        {ai
-                                            ? <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="lp-btn lp-btn-light">Talk to us about AI Master</a>
-                                            : <Link to={`/register?plan=${id}`} className="lp-btn lp-btn-primary">Choose Pro</Link>}
-                                    </article>
-                                );
-                            })}
-                        </div>
-                        <p className="lp-body" data-r style={{ ['--d' as string]: 2, marginTop: 24 }}>
-                            Start with a 14-day free trial. The AI Master price depends on your company, so we agree it together before you start.
-                        </p>
-                    </div>
-                </section>
-
                 {/* Call to action */}
-                <section className="lp-tile lp-white" aria-labelledby="cta-title">
+                <section id="contact" className="lp-tile lp-white" aria-labelledby="cta-title">
                     <div className="lp-wrap lp-cta">
                         <div>
                             <h2 id="cta-title" className="lp-h2" data-r style={{ ['--d' as string]: 0 }}>
-                                Ready to get started?
+                                Want to know our plans and prices?
                             </h2>
                             <p className="lp-lead" data-r style={{ ['--d' as string]: 1, marginTop: 20 }}>
-                                Learn how to run your cleaning business with CleanBase today.
+                                Contact us and we will recommend the right plan for your cleaning company and agree the price together.
                             </p>
                             <div className="lp-cta-actions" data-r style={{ ['--d' as string]: 2 }}>
                                 <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="lp-btn lp-btn-primary">
-                                    Talk with our team
+                                    Contact us
                                 </a>
-                                <Link to="/register" className="lp-btn lp-btn-ghost">Sign up</Link>
                             </div>
                         </div>
                         <div className="lp-cta-right" data-r style={{ ['--d' as string]: 2 }}>
@@ -369,13 +327,13 @@ export const LandingPage: React.FC = () => {
                             <p>Automate operations, manage staff, and grow revenue faster.</p>
                         </div>
                         <a
-                            href="https://aioperators.group/"
+                            href="https://xtechnology.group/"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="lp-powered"
                         >
-                            <img src="/ai-operators.png" alt="" />
-                            <span>Powered by <b>AI Operators Group</b></span>
+                            <img src="/xtech.png" alt="" />
+                            <span>Powered by <b>XTechnology Group</b></span>
                         </a>
                     </div>
                     <div className="lp-bigname" aria-hidden="true">
@@ -395,7 +353,7 @@ export const LandingPage: React.FC = () => {
                             </text>
                         </svg>
                     </div>
-                    <p className="lp-copy">&copy; {new Date().getFullYear()} CleanBase. All rights reserved. Built for cleaning services.</p>
+                    <p className="lp-copy">&copy; {new Date().getFullYear()} CleanBase. All rights reserved. Built for cleaning services. <Link to="/terms">Terms</Link> · <Link to="/privacy">Privacy</Link></p>
                 </div>
             </footer>
         </div>

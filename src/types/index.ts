@@ -20,6 +20,8 @@ export type PlanId = 'basic' | 'yearly_basic' | 'pro' | 'ai_master';
 export interface Company {
     id: ID;
     name: string;
+    /** Contact number given at sign up, with the country code (+974...). */
+    phone?: string;
     logo?: string;
     /** Booking page branding: main colour, soft background colour (both #rrggbb) and a short line under the name. */
     brandColor?: string;

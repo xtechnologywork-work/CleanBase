@@ -213,50 +213,63 @@ const asRow = (d: unknown): Row => (typeof d === 'string' ? JSON.parse(d) : d) a
 
 const chunk = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 
+type DbError = { code?: string; status?: number; message?: string };
+
+/**
+ * Writes every change to the database. One refused change must never undo the ones that were accepted
+ * (for example a new cleaner saved in the same moment as something the database does not allow): a refused
+ * group of rows is retried one row at a time, every other collection is still saved, and only then is the
+ * first refusal reported. A network failure (not a refusal) stops everything so it can be retried as a whole.
+ */
 async function applyOps(ops: Ops[]) {
     const supa = sb();
+    let refused: { error: DbError; col: string } | null = null;
+    const refuse = (error: DbError, col: string) => { console.error(`[CleanBase] the database refused a change to "${col}":`, error); refused ||= { error, col }; };
+    /** Run a write; a refusal is remembered, anything else (offline, server down) is thrown. */
+    const attempt = async (col: string, run: () => PromiseLike<{ error: DbError | null }>): Promise<boolean> => {
+        const { error } = await run();
+        if (!error) return true;
+        if (!REJECTED(error)) throw error;
+        refuse(error, col);
+        return false;
+    };
+
     for (const { col, insert, update, remove } of ops) {
-        pushing = col;
         const upd = (rows: Row[]) => rows.forEach(r => snap[col].set(r.id, snapKey(col, r)));
         snap[col] ||= new Map();
+        /** Insert rows together; if the database refuses the group, try them one by one so the good rows still get in. */
+        const insertRows = async (rows: Row[], write: (part: Row[]) => PromiseLike<{ error: DbError | null }>) => {
+            if (rows.length === 0) return;
+            const { error } = await write(rows);
+            if (!error) { upd(rows); return; }
+            if (!REJECTED(error)) throw error;
+            if (rows.length === 1) { refuse(error, col); return; }
+            for (const r of rows) { if (await attempt(col, () => write([r]))) upd([r]); }
+        };
+
         if (col === 'users') {
-            for (const part of chunk(insert, 100)) {
-                const { error } = await supa.from('profiles').insert(part.map(r => toProfile(r as unknown as User)));
-                if (error) throw error;
-                upd(part);
-            }
+            for (const part of chunk(insert, 100)) await insertRows(part, p => supa.from('profiles').insert(p.map(r => toProfile(r as unknown as User))));
             for (const r of update) {
                 const p = toProfile(r as unknown as User);
-                const { error } = await supa.from('profiles').update({ name: p.name, role: p.role, status: p.status, company_id: p.company_id }).eq('id', r.id);
-                if (error) throw error;
-                upd([r]);
+                if (await attempt(col, () => supa.from('profiles').update({ name: p.name, role: p.role, status: p.status, company_id: p.company_id }).eq('id', r.id))) upd([r]);
             }
             for (const id of remove) {
-                const { error } = await supa.from('profiles').delete().eq('id', id);
-                if (error) throw error;
-                snap[col].delete(id);
+                if (await attempt(col, () => supa.from('profiles').delete().eq('id', id))) snap[col].delete(id);
             }
             continue;
         }
         const companyOf = (r: Row) => (col === 'companies' ? r.id : (r.companyId as string | undefined) ?? null);
-        for (const part of chunk(insert, 200)) {
-            const { error } = await supa.from('records').insert(part.map(r => ({ collection: col, id: r.id, company_id: companyOf(r), data: r })));
-            if (error) throw error;
-            upd(part);
-        }
+        for (const part of chunk(insert, 200)) await insertRows(part, p => supa.from('records').insert(p.map(r => ({ collection: col, id: r.id, company_id: companyOf(r), data: r }))));
         for (const part of chunk(update, 10)) {
             await Promise.all(part.map(async r => {
-                const { error } = await supa.from('records').update({ data: r }).eq('collection', col).eq('id', r.id);
-                if (error) throw error;
-                upd([r]);
+                if (await attempt(col, () => supa.from('records').update({ data: r }).eq('collection', col).eq('id', r.id))) upd([r]);
             }));
         }
         for (const part of chunk(remove, 100)) {
-            const { error } = await supa.from('records').delete().eq('collection', col).in('id', part);
-            if (error) throw error;
-            part.forEach(id => snap[col].delete(id));
+            if (await attempt(col, () => supa.from('records').delete().eq('collection', col).in('id', part))) part.forEach(id => snap[col].delete(id));
         }
     }
+    if (refused) { const r: { error: DbError; col: string } = refused; pushing = r.col; throw r.error; }
 }
 
 let busy = false, again = false, timer: ReturnType<typeof setTimeout> | null = null, retry: ReturnType<typeof setTimeout> | null = null;

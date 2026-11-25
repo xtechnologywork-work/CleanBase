@@ -16,7 +16,7 @@ const SUGGESTIONS: Record<Lang, string[]> = {
     ar: ['شحال بعنا اليوم؟', 'شنو المشاكل اللي وقعت اليوم؟', 'شنو الحجوزات بلا عاملة؟', 'شكون خاصو يخلصنا؟', 'شكون أحسن عاملة هاد الأسبوع؟', 'شنو عندنا غدا؟', 'عطيني تقرير اليوم'],
 };
 
-const WHATSAPP = 'https://wa.me/97451704550';
+const WHATSAPP = 'https://wa.me/97472262228';
 
 export const AiManagerPage: React.FC = () => {
     const { user } = useAuth();

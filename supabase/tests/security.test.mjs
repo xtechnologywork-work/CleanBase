@@ -40,7 +40,7 @@ before(async () => {
         create role anon nologin; create role authenticated nologin;
         grant usage on schema public, auth to anon, authenticated;
     `);
-    for (const f of ['0001_schema_and_security.sql', '0002_public_api.sql', '0003_automations.sql', '0005_booking_store.sql', '0006_store_insights.sql', '0007_store_branding.sql', '0008_portal_phone_match.sql', '0009_public_brand.sql', '0010_weekly_hours.sql', '0012_company_guard.sql', '0013_link_after_confirm.sql', '0014_driver_trips.sql', '0015_cleaner_reservations.sql']) await db.exec(sql(f));
+    for (const f of ['0001_schema_and_security.sql', '0002_public_api.sql', '0003_automations.sql', '0005_booking_store.sql', '0006_store_insights.sql', '0007_store_branding.sql', '0008_portal_phone_match.sql', '0009_public_brand.sql', '0010_weekly_hours.sql', '0012_company_guard.sql', '0013_link_after_confirm.sql', '0014_driver_trips.sql', '0015_cleaner_reservations.sql', '0016_collection_views.sql', '0017_signup_phone.sql']) await db.exec(sql(f));
     await db.exec(`grant execute on all functions in schema auth to anon, authenticated`);
 
     // platform admin first, then the admin signs up and the trigger links them
@@ -571,4 +571,61 @@ test('a cleaner kept by a subscription is not offered to anyone else, and is fre
     // another company is never affected, and tenants cannot call the helper directly
     assert.equal((await as('anon', `select public_store($1) s`, [ids.B])).rows[0].s.away.filter(x => x.cleanerId === 'st-a1').length, 0);
     await assert.rejects(() => as(U.ownerA, `select cb_reservations($1)`, [ids.A]));
+});
+
+test('one readable view per collection: columns for each field, visible only to the dashboard owner, never to app roles', async () => {
+    await as(U.ownerA, INSERT, rec('clients', 'cl-v1', ids.A, { name: 'View Client', phone: '+97455500009' }));
+    await as(U.ownerA, INSERT, rec('supplyUsage', 'su-v1', ids.A, { item: 'Soap' }));
+    const made = (await db.query(`select cb_refresh_collection_views() r`)).rows[0].r;
+    assert.match(made, /views created or refreshed/);
+
+    // a view per collection, with a column per field (camelCase collection names become snake_case)
+    const row = (await db.query(`select id, company_id, name, phone from clients where id = 'cl-v1'`)).rows[0];
+    assert.deepEqual(row, { id: 'cl-v1', company_id: ids.A, name: 'View Client', phone: '+97455500009' });
+    assert.equal((await db.query(`select item from supply_usage`)).rows[0].item, 'Soap');
+
+    // the app roles cannot read them, so records' row level security stays the only way in
+    await rejects(U.ownerA, `select * from clients`);
+    await rejects('anon', `select * from clients`);
+    // and they cannot call the refresh helper
+    await rejects(U.ownerA, `select cb_refresh_collection_views()`);
+
+    // running again is safe and picks up new fields
+    await as(U.ownerA, INSERT, rec('clients', 'cl-v2', ids.A, { name: 'Second', vip: true }));
+    await db.query(`select cb_refresh_collection_views()`);
+    assert.equal((await db.query(`select vip from clients where id = 'cl-v2'`)).rows[0].vip, 'true');
+    // the real records table is untouched
+    assert.equal((await db.query(`select count(*)::int n from records where collection = 'clients'`)).rows[0].n >= 3, true);
+});
+
+test('adding a cleaner as the owner: the login profile and the staff record are both saved and read back', async () => {
+    const uid = 'u-' + Date.now();
+    const profile = { id: uid, email: `new${Date.now()}@cleanbase.local`, name: 'New Cleaner', role: 'cleaner', company_id: ids.A, status: 'active', created_at: new Date().toISOString() };
+    await as(U.ownerA, `insert into profiles (id, email, name, role, company_id, status, created_at) values ($1,$2,$3,$4,$5,$6,$7)`,
+        [profile.id, profile.email, profile.name, profile.role, profile.company_id, profile.status, profile.created_at]);
+    await as(U.ownerA, INSERT, rec('staff', 'staff-new1', ids.A, { userId: uid, phone: '+97455512345', rating: 5 }));
+    const prof = await as(U.ownerA, `select id, name, role from profiles where id = $1`, [uid]);
+    assert.equal(prof.rows.length, 1);
+    assert.equal((await as(U.ownerA, `select data->>'userId' u from records where collection='staff' and id='staff-new1'`)).rows[0].u, uid);
+});
+
+test('every collection the app saves is one the database accepts (a missing one would make new records vanish)', async () => {
+    const src = readFileSync(join(here, '..', '..', 'src', 'services', 'replicate.ts'), 'utf8');
+    const list = name => [...src.match(new RegExp(`export const ${name} = \\[([^\\]]*)\\]`))[1].matchAll(/'(\w+)'/g)].map(m => m[1]);
+    const fromApp = [...list('CORE'), ...list('ERP')];
+    const allowed = (await db.query(`select unnest(cb_tenant_collections()) c`)).rows.map(r => r.c);
+    assert.deepEqual(fromApp.filter(c => !allowed.includes(c)), [], 'collections the app writes but the database refuses');
+});
+
+test('sign up keeps the contact phone on the company, rejects a bad one, and the old three-argument call still works', async () => {
+    const mk = async (n) => { const sub = `00000000-0000-0000-0000-0000000fa0${n}`; await db.query(`insert into auth.users values ($1,$2)`, [sub, `phone-signup-${n}@cb.test`]); return sub; };
+    const a = await mk('01'), b = await mk('02'), c = await mk('03');
+    const withPhone = await as(a, `select register_company('Phone Co','pro','Pat','+97451704550') r`);
+    const stored = await db.query(`select data->>'phone' p from records where collection='companies' and id=$1`, [withPhone.rows[0].r.companyId]);
+    assert.equal(stored.rows[0].p, '+97451704550');
+    await rejects(b, `select register_company('Bad Phone Co','pro','Bo','12345')`);
+    await rejects(b, `select register_company('Bad Phone Co','pro','Bo','+974 5170 4550')`);
+    const without = await as(c, `select register_company('No Phone Co','pro','Cy') r`);
+    const none = await db.query(`select data ? 'phone' has from records where collection='companies' and id=$1`, [without.rows[0].r.companyId]);
+    assert.equal(none.rows[0].has, false);
 });

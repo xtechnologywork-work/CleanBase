@@ -117,6 +117,7 @@ export const SuperAdminTenants: React.FC = () => {
                                     onClick={e => { e.stopPropagation(); copy(t.owner!.email); }}>
                                     {t.owner.email} {copied === t.owner.email ? <Check size={12} /> : <Copy size={12} />}
                                 </button>
+                                {t.company.phone && <a className="tiny" href={`tel:${t.company.phone}`} onClick={e => e.stopPropagation()} style={{ display: 'block' }}>{t.company.phone}</a>}
                             </div>) : <span className="tiny">No owner</span> },
                         { key: 'u', header: 'Usage', render: ({ t }) => (
                             <div className="tiny" style={{ color: 'var(--color-text-secondary)' }}>
@@ -193,6 +194,7 @@ const TenantDetail: React.FC<{ t: Tenant; tenants: Tenant[]; onEnter: () => void
                     <Field label="Company name" half><input value={name} onChange={e => setName(e.target.value)} /></Field>
                     <Field label="Owner name" half><input value={ownerName} onChange={e => setOwnerName(e.target.value)} disabled={!t.owner} /></Field>
                     <Field label="Owner email" half hint="Changed by the owner from their own account"><input value={t.owner?.email || ''} readOnly /></Field>
+                    <Field label="Contact number" half hint="Given at sign up"><input value={t.company.phone || 'Not given'} readOnly /></Field>
                     <Field label="Plan" half>
                         <select value={plan} onChange={e => { const p = e.target.value as Plan; setPlan(p); setMrr(String(PLAN_DEFAULT_MRR[p])); }}>
                             {planChoices(t.plan).map(p => <option key={p} value={p}>{PLAN_LABEL[p]}</option>)}
@@ -261,7 +263,7 @@ const Provision: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onC
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return alert('Enter a valid email address.');
         if (db.users.some(u => u.email.toLowerCase() === email)) return alert('That email already belongs to someone on the platform.');
         provisionTenant({ companyName: f.companyName, ownerName: f.ownerName, email, plan: f.plan, mrr: Number(f.mrr) || 0, trialDays: Number(f.trialDays) || 0 });
-        if (isCloud) alert('Tenant created. Ask the owner to open the sign-in page, choose Start for free, leave the company name blank, and sign up with this email. They are linked to this company automatically.');
+        if (isCloud) alert('Tenant created. Ask the owner to open the sign-in page, choose Create an account, tap "My company invited me", and sign up with this email. They are linked to this company automatically.');
         setF({ companyName: '', ownerName: '', email: '', plan: 'pro', mrr: '500', trialDays: '14' });
         onClose();
     };
@@ -279,7 +281,7 @@ const Provision: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onC
                         </select>
                     </Field>
                     <Field label="Monthly price (QAR)" half><input type="number" step="any" value={f.mrr} onChange={e => set('mrr', e.target.value)} /></Field>
-                    <Field label="Free trial (days)" half hint="License ends after this many days"><input type="number" min="0" value={f.trialDays} onChange={e => set('trialDays', e.target.value)} /></Field>
+                    <Field label="License length (days)" half hint="License ends after this many days"><input type="number" min="0" value={f.trialDays} onChange={e => set('trialDays', e.target.value)} /></Field>
                 </div>
                 <div className="tiny">{isCloud ? 'The owner then signs up with this email to get access.' : 'Demo mode: the owner can sign in with this email and any password.'}</div>
                 <div className="modal-f" style={{ padding: 0 }}>

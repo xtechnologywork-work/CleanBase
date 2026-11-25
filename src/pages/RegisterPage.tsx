@@ -1,43 +1,68 @@
-import React, { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowRight, Building, CalendarCheck, Check, Eye, EyeOff, Lock, Mail, Phone, ShieldCheck, User as UserIcon, Users, Wallet } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { Mail, Lock, Building } from 'lucide-react';
 import { Brand } from '../components/shared/Brand';
 import '../auth.css';
 import { isCloud } from '../services/backend';
-import { isPlanId, PLANS, SELLABLE } from '../services/plans';
-import type { PlanId } from '../types';
+import { COUNTRY_CODE, formatLocal, fullPhone, localDigits } from '../services/phone';
+
+/** 0 to 4: how hard the password is to guess. Only the 8 character minimum is enforced; this is guidance. */
+function strength(p: string): number {
+    if (!p) return 0;
+    let s = 0;
+    if (p.length >= 8) s++;
+    if (/[a-z]/.test(p) && /[A-Z]/.test(p)) s++;
+    if (/\d/.test(p)) s++;
+    if (/[^A-Za-z0-9]/.test(p) || p.length >= 14) s++;
+    return Math.max(p.length >= 8 ? 1 : 0, s);
+}
+const STRENGTH_LABEL = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+
+const POINTS = [
+    { icon: <CalendarCheck size={18} />, title: 'Bookings and dispatch', text: 'One calendar for every job, cleaner and route.' },
+    { icon: <Users size={18} />, title: 'Clients and team', text: 'Contracts, documents, attendance and payroll in one place.' },
+    { icon: <Wallet size={18} />, title: 'Invoices and reports', text: 'Know what you earned, what is unpaid and what is next.' },
+];
 
 export const RegisterPage: React.FC = () => {
     const navigate = useNavigate();
     const { register } = useAuth();
 
-    const [email, setEmail] = useState('');
+    const [fullName, setFullName] = useState('');
     const [companyName, setCompanyName] = useState('');
+    const [invited, setInvited] = useState(false);          // online only: a team member joining a company that invited them
+    const [phone, setPhone] = useState('');                // the 8 local digits; the country code is fixed
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [params] = useSearchParams();
-    const wanted = params.get('plan');
-    const [plan, setPlan] = useState<PlanId>(isPlanId(wanted) && SELLABLE.includes(wanted) ? wanted : 'pro');
+    const [show, setShow] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const [notice, setNotice] = useState('');
 
+    const score = useMemo(() => strength(password), [password]);
+
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         if (busy) return;
+        if (!invited && !fullPhone(phone)) { setError('Enter your contact number: the 8 digits after ' + COUNTRY_CODE + '.'); return; }
         setBusy(true); setError(''); setNotice('');
-        const r = await register(email, companyName, plan, password);
+        // The plan is agreed with the CleanBase team after approval, so every account starts on the same one.
+        const r = await register(email, invited ? '' : companyName, 'pro', password, fullName, invited ? '' : phone);
         setBusy(false);
-        if (r.ok) navigate('/app');
+        if (r.ok) navigate('/app');              // a company waiting for approval is sent on to the "under review" screen
         else if (r.notice) setNotice(r.notice);
         else setError(r.error || 'Could not create the account. Try again.');
     };
-    const clear = () => { setError(''); };
+
+    const top = (
+        <div className="auth-top"><Link to="/" aria-label="CleanBase home"><Brand size={20} /></Link></div>
+    );
 
     if (notice) {
         return (
             <div className="auth">
-                <div className="auth-top"><Link to="/" aria-label="CleanBase home"><Brand size={20} /></Link></div>
+                {top}
                 <main className="auth-main">
                     <div className="auth-card">
                         <h1>Check your email</h1>
@@ -53,46 +78,77 @@ export const RegisterPage: React.FC = () => {
     }
 
     return (
-        <div className="auth">
-            <div className="auth-top">
-                <Link to="/" aria-label="CleanBase home"><Brand size={20} /></Link>
-            </div>
-            <main className="auth-main">
-                <div className="auth-card">
-                    <h1>Create your account</h1>
-                    <p className="auth-sub">Start your 14-day free trial. No credit card required.</p>
+        <div className="reg">
+            <aside className="reg-side" aria-label="About CleanBase">
+                <Link to="/" className="reg-side-brand" aria-label="CleanBase home"><Brand size={22} /></Link>
+                <div className="reg-side-body">
+                    <h2>Run your cleaning company from one place.</h2>
+                    <p>Bookings, cleaners, clients, invoices and reports, built for cleaning companies.</p>
+                    <ul className="reg-points">
+                        {POINTS.map(p => (
+                            <li key={p.title}>
+                                <span className="reg-point-icon" aria-hidden="true">{p.icon}</span>
+                                <span><b>{p.title}</b>{p.text}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                <ol className="reg-steps" aria-label="What happens after you sign up">
+                    <li><i>1</i><span>Create your account</span></li>
+                    <li><i>2</i><span>Our team reviews your company</span></li>
+                    <li><i>3</i><span>You get access to your workspace</span></li>
+                </ol>
+            </aside>
 
-                    <form className="auth-form" onSubmit={handleRegister} onChange={clear}>
+            <main className="reg-main">
+                <div className="reg-mobile-brand"><Link to="/" aria-label="CleanBase home"><Brand size={20} /></Link></div>
+                <div className="reg-card">
+                    <h1>Create your account</h1>
+                    <p className="auth-sub">Tell us about you and your company. Our team reviews every new account before it is opened.</p>
+
+                    <form className="auth-form" onSubmit={handleRegister} onChange={() => setError('')} noValidate={false}>
                         {error && <div className="auth-msg is-error" role="alert">{error}</div>}
+
                         <div className="auth-field">
-                            <label htmlFor="reg-company">Company name{isCloud ? ' (leave blank if you were invited)' : ''}</label>
+                            <label htmlFor="reg-name">Your full name</label>
                             <div className="auth-input">
-                                <Building size={18} aria-hidden="true" />
-                                <input
-                                    id="reg-company"
-                                    type="text"
-                                    placeholder="e.g. Sparkle Cleaners"
-                                    autoComplete="organization"
-                                    value={companyName}
-                                    onChange={e => setCompanyName(e.target.value)}
-                                    required={!isCloud}
-                                />
+                                <UserIcon size={18} aria-hidden="true" />
+                                <input id="reg-name" type="text" placeholder="e.g. Sara Al Thani" autoComplete="name" value={fullName}
+                                    onChange={e => setFullName(e.target.value)} minLength={2} maxLength={80} required />
                             </div>
                         </div>
 
+                        {!invited && (
+                            <div className="auth-field">
+                                <label htmlFor="reg-company">Company name</label>
+                                <div className="auth-input">
+                                    <Building size={18} aria-hidden="true" />
+                                    <input id="reg-company" type="text" placeholder="e.g. Sparkle Cleaners" autoComplete="organization" value={companyName}
+                                        onChange={e => setCompanyName(e.target.value)} minLength={2} maxLength={120} required />
+                                </div>
+                            </div>
+                        )}
+
+                        {!invited && (
+                            <div className="auth-field">
+                                <label htmlFor="reg-phone">Contact number</label>
+                                <div className="auth-input auth-phone">
+                                    <Phone size={18} aria-hidden="true" />
+                                    <span className="auth-cc" aria-hidden="true">{COUNTRY_CODE}</span>
+                                    <input id="reg-phone" type="tel" inputMode="numeric" placeholder="5555 1234" autoComplete="tel-national" value={formatLocal(phone)}
+                                        onChange={e => setPhone(localDigits(e.target.value))} pattern="\d{4} \d{4}" title="8 digits, for example 5555 1234"
+                                        aria-label={`Contact number, after ${COUNTRY_CODE}`} aria-describedby="reg-phone-hint" required />
+                                </div>
+                                <span id="reg-phone-hint" className="auth-hint">We use it only to reach you about your account.</span>
+                            </div>
+                        )}
+
                         <div className="auth-field">
-                            <label htmlFor="reg-email">Email address</label>
+                            <label htmlFor="reg-email">Work email</label>
                             <div className="auth-input">
                                 <Mail size={18} aria-hidden="true" />
-                                <input
-                                    id="reg-email"
-                                    type="email"
-                                    placeholder="owner@company.com"
-                                    autoComplete="email"
-                                    value={email}
-                                    onChange={e => setEmail(e.target.value)}
-                                    required
-                                />
+                                <input id="reg-email" type="email" placeholder="you@company.com" autoComplete="email" value={email}
+                                    onChange={e => setEmail(e.target.value)} required />
                             </div>
                         </div>
 
@@ -100,39 +156,32 @@ export const RegisterPage: React.FC = () => {
                             <label htmlFor="reg-password">Password</label>
                             <div className="auth-input">
                                 <Lock size={18} aria-hidden="true" />
-                                <input
-                                    id="reg-password"
-                                    type="password"
-                                    placeholder="Create a strong password"
-                                    autoComplete="new-password"
-                                    value={password}
-                                    onChange={e => setPassword(e.target.value)}
-                                    minLength={8}
-                                    maxLength={72}
-                                    required
-                                />
+                                <input id="reg-password" type={show ? 'text' : 'password'} placeholder="At least 8 characters" autoComplete="new-password" value={password}
+                                    onChange={e => setPassword(e.target.value)} minLength={8} maxLength={72} required aria-describedby="reg-pw-hint" />
+                                <button type="button" className="auth-eye" onClick={() => setShow(s => !s)} aria-label={show ? 'Hide password' : 'Show password'} aria-pressed={show}>
+                                    {show ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
                             </div>
-                            <span className="auth-hint">At least 8 characters.</span>
+                            <div className="auth-meter" aria-hidden="true">
+                                {[1, 2, 3, 4].map(i => <span key={i} className={score >= i ? `on s${score}` : ''} />)}
+                            </div>
+                            <span id="reg-pw-hint" className="auth-hint" aria-live="polite">
+                                {password ? `Password strength: ${STRENGTH_LABEL[score] || 'Too short'}` : 'Use a mix of letters, numbers and symbols.'}
+                            </span>
                         </div>
 
-                        <div className="auth-field">
-                            <label htmlFor="reg-plan">Select plan</label>
-                            <div className="auth-input">
-                                <select
-                                    id="reg-plan"
-                                    value={plan}
-                                    onChange={e => setPlan(e.target.value as PlanId)}
-                                >
-                                    {SELLABLE.map(id => (
-                                        <option key={id} value={id}>
-                                            {PLANS[id].name}: {PLANS[id].price === null ? 'price agreed with our team' : `${PLANS[id].price} QAR / month`}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
+                        <button type="submit" className="lp-btn lp-btn-primary auth-submit" disabled={busy}>
+                            {busy ? 'Creating your account...' : <>Create account <ArrowRight size={18} aria-hidden="true" /></>}
+                        </button>
 
-                        <button type="submit" className="lp-btn lp-btn-primary auth-submit" disabled={busy}>{busy ? 'Creating your account...' : 'Get started'}</button>
+                        <p className="reg-secure"><ShieldCheck size={15} aria-hidden="true" /> Your account opens once our team has approved it.</p>
+                        <p className="reg-terms">By creating an account you agree to our <Link to="/terms" target="_blank">Terms</Link> and <Link to="/privacy" target="_blank">Privacy Policy</Link>.</p>
+
+                        {isCloud && (
+                            <button type="button" className="reg-link" onClick={() => setInvited(v => !v)}>
+                                {invited ? <><Check size={14} aria-hidden="true" /> Joining a company that invited me (tap to undo)</> : 'My company invited me to join'}
+                            </button>
+                        )}
                     </form>
 
                     <p className="auth-switch">

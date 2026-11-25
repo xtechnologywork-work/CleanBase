@@ -24,6 +24,9 @@ The files it is made of, if you prefer to run them one at a time:
 4. `migrations/0004_supabase_extras.sql` photo storage bucket, realtime, hourly schedule
 5. `migrations/0005_booking_store.sql` public booking store: free times, requests, safe booking
 6. `migrations/0006_store_insights.sql` anonymous store visit counts and conversion
+7. `migrations/0007` to `0015` store branding, opening hours, staff videos, company guard, driver trips, reservations
+8. `migrations/0016_collection_views.sql` one readable view per collection (bookings, clients, invoices...) in the Table Editor. Read-only for you; the app keeps using `records`. Re-run `select public.cb_refresh_collection_views();` after new kinds of data appear
+9. `migrations/0017_signup_phone.sql` the sign-up contact phone: `register_company` accepts it and keeps it on the company
 
 For the extras file you first need **Database, Extensions, pg_cron** enabled. If a line errors because a feature is off, enable it and run the file again.
 
@@ -104,3 +107,4 @@ This runs the real SQL in an in-process Postgres and tries to break it: reading 
 - Realtime delete events expose only the id of a deleted row to other signed-in users of the same project.
 - Rows are stored as JSON documents in one table. This keeps the app flexible; move hot collections (bookings, invoices) to dedicated columns if you pass tens of thousands of rows per company.
 - If two people edit the same record at the same moment, the last save wins.
+

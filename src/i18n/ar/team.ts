@@ -61,7 +61,7 @@ const dict: Dict = {
     'Members authorized to access dispatch tools and manage appointments. Drivers have their own tab.': 'أعضاء مصرّح لهم باستخدام أدوات التوزيع وإدارة المواعيد. للسائقين تبويبهم الخاص.',
     'Add Member': 'إضافة عضو', 'User': 'المستخدم', 'Email': 'البريد الإلكتروني', 'Role': 'الدور', 'No additional team members registered.': 'لا يوجد أعضاء فريق إضافيون.',
     'Add Team Member': 'إضافة عضو فريق', 'Provide login credentials for dashboard access.': 'أدخل بيانات الدخول إلى لوحة التحكم.', 'Work Email': 'البريد الإلكتروني للعمل',
-    'They set their own password: ask them to open the sign-in page, choose Start for free, and sign up with this email. They are linked to your company automatically.': 'يضعون كلمة مرورهم بأنفسهم: اطلب منهم فتح صفحة تسجيل الدخول واختيار «ابدأ مجانًا» ثم التسجيل بهذا البريد. يرتبطون بشركتك تلقائيًا.',
+    'They set their own password: ask them to open the sign-in page, choose Create an account, tap "My company invited me", and sign up with this email. They are linked to your company automatically.': 'يضعون كلمة مرورهم بأنفسهم: اطلب منهم فتح صفحة تسجيل الدخول واختيار «إنشاء حساب» ثم الضغط على «شركتي دعتني للانضمام» ثم التسجيل بهذا البريد. يرتبطون بشركتك تلقائيًا.',
     'Initial Password': 'كلمة المرور الأولية', 'Temporary password': 'كلمة مرور مؤقتة', 'Manager (everything except settings)': 'مدير (كل شيء ما عدا الإعدادات)', 'Dispatcher': 'منسّق التوزيع',
     'Accountant': 'محاسب', 'Operations Staff': 'موظف عمليات', 'Field Cleaner': 'عامل نظافة ميداني', 'Create Account': 'إنشاء الحساب',
 

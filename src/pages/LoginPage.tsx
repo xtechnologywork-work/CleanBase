@@ -66,7 +66,7 @@ export const LoginPage: React.FC = () => {
                     </form>
 
                     <p className="auth-switch">
-                        Don't have an account? <Link to="/register">Start for free</Link>
+                        Don't have an account? <Link to="/register">Create an account</Link>
                     </p>
                 </div>
             </main>

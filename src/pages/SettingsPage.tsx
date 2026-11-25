@@ -589,7 +589,7 @@ export const SettingsPage: React.FC = () => {
                                     </div>
                                     {isCloud ? (
                                         <p style={{ fontSize: "0.8125rem", color: "var(--color-text-secondary)", margin: "0 0 1rem" }}>
-                                            They set their own password: ask them to open the sign-in page, choose Start for free, and sign up with this email. They are linked to your company automatically.
+                                            They set their own password: ask them to open the sign-in page, choose Create an account, tap "My company invited me", and sign up with this email. They are linked to your company automatically.
                                         </p>
                                     ) : (
                                         <div className="input-group">
