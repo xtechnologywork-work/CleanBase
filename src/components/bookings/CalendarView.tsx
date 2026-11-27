@@ -15,6 +15,9 @@ interface CalendarViewProps {
     onDeleteBooking?: (bookingId: string) => void;
 }
 
+/** The short state word on a calendar chip (translated with the rest of the dashboard). */
+const STATUS_SHORT: Record<string, string> = { pending: 'Pending', confirmed: 'Confirmed', in_progress: 'In Progress', completed: 'Done', cancelled: 'Cancelled' };
+
 const formatLocalDate = (d: Date): string => {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -291,7 +294,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                                                 backgroundColor: theme.bg,
                                                 color: theme.color
                                             }}>
-                                                {b.status.slice(0, 4)}
+                                                {STATUS_SHORT[b.status] || b.status}
                                             </span>
                                         </div>
                                     </div>

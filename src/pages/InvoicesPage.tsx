@@ -103,8 +103,8 @@ export const InvoicesPage: React.FC = () => {
             </PageHeader>
 
             <div className="kpis">
-                <Kpi label="Open balance" value={fmt(openBalance, 0)} unit="QAR" hint={`${open.length} unpaid invoices`} />
-                <Kpi label="Overdue" value={fmt(overdueBalance, 0)} unit="QAR" tone={overdueBalance > 0 ? 'bad' : undefined} hint={`${all.filter(x => x.state === 'overdue').length} invoices past due`} />
+                <Kpi label="Open balance" value={fmt(openBalance, 0)} unit="QAR" hint={`${open.length} unpaid invoice${open.length === 1 ? '' : 's'}`} />
+                <Kpi label="Overdue" value={fmt(overdueBalance, 0)} unit="QAR" tone={overdueBalance > 0 ? 'bad' : undefined} hint={`${all.filter(x => x.state === 'overdue').length} invoice${all.filter(x => x.state === 'overdue').length === 1 ? '' : 's'} past due`} />
                 <Kpi label="Collected this month" value={fmt(paidThisMonth, 0)} unit="QAR" icon={<Banknote size={16} />} />
                 <Kpi label="Invoices issued" value={invoices.length} hint={`${all.filter(x => x.state === 'paid').length} fully paid`} />
             </div>
@@ -282,6 +282,7 @@ const CreateInvoice: React.FC<{
     open: boolean; onClose: () => void; companyId: string; onCreated: (id: string) => void;
     promos: ReturnType<typeof readCollection<'promos'>>;
 }> = ({ open, onClose, companyId, onCreated, promos }) => {
+    const { user } = useAuth();
     const db = useDB();
     const { settings } = useSettings(companyId);
     const { items: invoices } = useCollection('invoices', companyId);
@@ -317,7 +318,7 @@ const CreateInvoice: React.FC<{
             items, discount: totalDiscount, taxRate: settings.taxRate, notes, status,
         });
         if (code) updateItem('promos', code.id, { used: code.used + 1 });
-        logActivity(companyId, 'Owner', 'Created invoice', inv.number);
+        logActivity(companyId, user?.name || 'Owner', 'Created invoice', inv.number);
         reset();
         onCreated(inv.id);
     };

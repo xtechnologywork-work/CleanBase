@@ -4,6 +4,7 @@ import { Star } from 'lucide-react';
 import { isCloud, sb } from '../services/backend';
 import { dayLabel, readCollection, updateItem } from '../services/erp';
 import { Brand } from '../components/shared/Brand';
+import { getDB } from '../services/mockDb';
 import '../auth.css';
 import { useAppViewport } from '../services/useAppViewport';
 
@@ -30,7 +31,7 @@ export const ReviewPage: React.FC = () => {
                 if (alive) setInfo((data as Info | null) ?? null);
             } else {
                 const r = readCollection('reviewRequests').find(x => x.token === token);
-                if (alive) setInfo(r ? { status: r.status, company: 'Your cleaning company', service: r.serviceName, date: r.serviceDate, cleaner: r.cleanerName } : null);
+                if (alive) setInfo(r ? { status: r.status, company: getDB().companies.find(c => c.id === r.companyId)?.name || 'Your cleaning company', service: r.serviceName, date: r.serviceDate, cleaner: r.cleanerName } : null);
             }
         })();
         return () => { alive = false; };

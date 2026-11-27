@@ -141,7 +141,7 @@ const common: Dict = {
     'Top services': 'أفضل الخدمات', 'By revenue in the period': 'حسب الإيرادات في هذه الفترة', 'No completed jobs in this period.': 'لا توجد مهام مكتملة في هذه الفترة.',
     'Top cleaners': 'أفضل عمال النظافة',
     '{} QAR · {} jobs': m => `${m[1]} ر.ق · ${jobs(m[2])}`,
-    '{n} jobs': m => jobs(m[1]), '{n} job': () => 'مهمة واحدة',
+    '{n} jobs': m => jobs(m[1]), '{n} job': () => 'مهمة واحدة', '{} QAR · {} job': m => `${m[1]} ر.ق · ${jobs(m[2])}`,
     'jobs': 'مهام',
     'This workspace contains sample data.': 'تحتوي مساحة العمل هذه على بيانات تجريبية.',
     'Remove all sample data? Your own records stay.': 'هل تريد إزالة كل البيانات التجريبية؟ سجلاتك الخاصة تبقى كما هي.',

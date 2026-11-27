@@ -31,7 +31,7 @@ export const QualityPage: React.FC = () => {
                 <Kpi label="Open complaints" value={items.filter(c => c.status === 'open').length} tone={items.some(c => c.status === 'open') ? 'bad' : undefined} />
                 <Kpi label="Investigating" value={items.filter(c => c.status === 'investigating').length} />
                 <Kpi label="Resolved" value={items.filter(c => c.status === 'resolved').length} />
-                <Kpi label="Average rating" value={reviews.length ? avg.toFixed(1) : 'No reviews'} unit={reviews.length ? '/ 5' : undefined} hint={`${reviews.length} reviews`} />
+                <Kpi label="Average rating" value={reviews.length ? avg.toFixed(1) : 'No reviews'} unit={reviews.length ? '/ 5' : undefined} hint={`${reviews.length} review${reviews.length === 1 ? '' : 's'}`} />
             </div>
             <Tabs value={tab} onChange={setTab} tabs={[{ id: 'complaints', label: 'Complaints' }, { id: 'reviews', label: 'Reviews' }]} />
             {tab === 'complaints' ? (

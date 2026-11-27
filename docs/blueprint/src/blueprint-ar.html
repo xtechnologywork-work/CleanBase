@@ -1,0 +1,1022 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>CleanBase Blueprint V1 by XTECH</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@500;600;700;800&display=block" rel="stylesheet">
+<style>
+@page { size: A4; margin: 0; }
+:root { --ink: #12131a; --sub: #4b4f5c; --faint: #8b8e9c; --line: #e6e8ef; --ground: #f5f6f9; --navy: #0b1a33; --blue: #0066cc; --accent: #f97316; --green: #1f8a4c; --red: #c4000f; }
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #d9dce3; }
+body { font-family: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.65; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.en { font-family: 'Inter', 'Segoe UI', sans-serif; direction: ltr; unicode-bidi: isolate; white-space: nowrap; }
+.page { width: 210mm; height: 297mm; margin: 0 auto 8mm; background: #fff; position: relative; overflow: hidden; break-after: page; display: flex; flex-direction: column; padding: 13mm 15mm 11mm; }
+@media print { html, body { background: #fff; } .page { margin: 0; } }
+.run { display: flex; justify-content: space-between; align-items: center; font-size: 8pt; color: var(--faint); padding-bottom: 3mm; border-bottom: 1px solid var(--line); margin-bottom: 6mm; flex: none; }
+.run b { color: var(--sub); font-weight: 600; }
+.foot { flex: none; display: flex; justify-content: space-between; align-items: center; font-size: 8pt; color: var(--faint); padding-top: 3mm; border-top: 1px solid var(--line); margin-top: 4mm; }
+.foot .pno { display: inline-grid; place-items: center; min-width: 7mm; height: 7mm; border-radius: 99px; background: var(--navy); color: #fff; font-weight: 700; font-family: 'Inter', sans-serif; padding: 0 2mm; }
+.body { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 4mm; }
+
+h1, h2, h3 { margin: 0; line-height: 1.3; }
+h2 { font-size: 19pt; font-weight: 700; letter-spacing: 0; }
+h3 { font-size: 12pt; font-weight: 700; }
+p { margin: 0; }
+.lead { color: var(--sub); font-size: 10.5pt; }
+.kicker { display: inline-flex; align-items: center; gap: 2mm; font-size: 8.5pt; font-weight: 700; color: var(--blue); background: #e8f1fb; border-radius: 99px; padding: 1mm 3.5mm; align-self: flex-start; }
+.ui { font-weight: 700; color: var(--navy); background: #eef1f7; border-radius: 4px; padding: 0 1.4mm; white-space: nowrap; }
+
+/* screenshots */
+.shot { margin: 0; }
+.shot .frame { position: relative; width: 100%; border-radius: 3mm; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 2px 8px rgba(16, 24, 40, .08); background: #fff; }
+.shot img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.shot svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.shot.phone { width: 62mm; flex: none; }
+.shot.phone .frame { border-radius: 6mm; border: 2.2mm solid #15171f; box-shadow: 0 6px 18px rgba(16, 24, 40, .18); }
+.shot.small { width: 82%; align-self: center; }
+.shot.mid { width: 90%; align-self: center; }
+.shot.narrow { width: 58%; align-self: center; }
+.shot.half { width: 100%; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; align-items: start; }
+.phones { display: flex; gap: 8mm; justify-content: center; align-items: flex-start; }
+.side { display: grid; grid-template-columns: 62mm 1fr; gap: 7mm; align-items: start; }
+
+/* numbered explanations */
+.legend { list-style: none; margin: 0; padding: 0; counter-reset: n; display: grid; grid-template-columns: 1fr 1fr; gap: 1.6mm 6mm; }
+.legend.one { grid-template-columns: 1fr; }
+.legend li { counter-increment: n; position: relative; padding-right: 8mm; font-size: 9.5pt; line-height: 1.55; }
+.legend li::before { content: counter(n); position: absolute; right: 0; top: .3mm; width: 5.6mm; height: 5.6mm; border-radius: 50%; background: var(--accent); color: #fff; font: 700 8pt 'Inter', sans-serif; display: grid; place-items: center; }
+.legend li b { color: var(--ink); }
+
+/* boxes */
+.tip, .warn, .note { border-radius: 3mm; padding: 3mm 4mm; font-size: 9.5pt; line-height: 1.6; display: flex; gap: 3mm; align-items: flex-start; }
+.tip { background: #e8f1fb; color: #0b3d75; }
+.warn { background: #fff4e5; color: #7a4100; }
+.note { background: #e9f7ef; color: #15603a; }
+.tip i, .warn i, .note i { font-style: normal; font-weight: 700; flex: none; }
+.cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+.card { border: 1px solid var(--line); border-radius: 3mm; padding: 3.5mm 4mm; background: #fff; }
+.card h3 { font-size: 11pt; margin-bottom: 1mm; }
+.card p, .card li { font-size: 9.3pt; color: var(--sub); }
+.card ul { margin: 1mm 0 0; padding-right: 4.5mm; }
+.chips { display: flex; flex-wrap: wrap; gap: 2mm; }
+.chip { font-size: 8.5pt; font-weight: 600; border-radius: 99px; padding: .8mm 3mm; background: var(--ground); color: var(--sub); }
+
+/* chapter opening band */
+.band { background: linear-gradient(135deg, var(--navy), #13325f); color: #fff; border-radius: 4mm; padding: 6mm 7mm; display: flex; align-items: center; gap: 5mm; }
+.band .num { width: 15mm; height: 15mm; border-radius: 4mm; background: rgba(255,255,255,.14); display: grid; place-items: center; font: 800 18pt 'Inter', sans-serif; flex: none; }
+.band h2 { color: #fff; font-size: 20pt; }
+.band p { color: rgba(255,255,255,.8); font-size: 10pt; }
+
+/* step list */
+.steps { list-style: none; margin: 0; padding: 0; counter-reset: s; display: flex; flex-direction: column; gap: 2.4mm; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 9mm 1fr auto; gap: 3mm; align-items: center; border: 1px solid var(--line); border-radius: 3mm; padding: 2.4mm 3.5mm; }
+.steps li::before { content: counter(s); width: 8mm; height: 8mm; border-radius: 50%; background: var(--navy); color: #fff; font: 700 10pt 'Inter', sans-serif; display: grid; place-items: center; }
+.steps li b { display: block; font-size: 10.2pt; }
+.steps li span { font-size: 9pt; color: var(--sub); }
+.steps li em { font-style: normal; font-size: 8.3pt; color: var(--faint); white-space: nowrap; }
+#routine ul { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 1.6mm; }
+#routine li { display: block; }
+#routine .box-check { vertical-align: -1mm; margin-left: 2.5mm; }
+.box-check { width: 5mm; height: 5mm; border: 1.6px solid var(--faint); border-radius: 1.2mm; display: inline-block; }
+
+/* flow diagram */
+.flow { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 9mm 8mm; position: relative; }
+.flow .st { position: relative; border-radius: 3.5mm; padding: 3.5mm 4mm; background: #fff; border: 1.5px solid var(--line); min-height: 33mm; }
+.flow .st .ic { width: 10mm; height: 10mm; border-radius: 3mm; display: grid; place-items: center; color: #fff; font: 800 11pt 'Inter', sans-serif; margin-bottom: 2mm; }
+.flow .st h3 { font-size: 10.5pt; margin-bottom: .8mm; }
+.flow .st p { font-size: 8.8pt; color: var(--sub); line-height: 1.5; }
+.flow .st .where { display: block; margin-top: 1.5mm; font-size: 8pt; font-weight: 700; color: var(--blue); }
+.flow .st::after { content: '←'; position: absolute; left: -6.6mm; top: 50%; transform: translateY(-50%); font: 700 14pt 'Inter', sans-serif; color: var(--accent); }
+.flow .st.end::after, .flow .st.rowend::after { content: none; }
+
+/* system map */
+.map { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }
+.map .grp { border-radius: 3.5mm; padding: 3.5mm 4mm; color: #fff; }
+.map .grp h3 { color: #fff; font-size: 11pt; margin-bottom: 1.5mm; }
+.map .grp ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 1mm; }
+.map .grp li { font-size: 9pt; background: rgba(255,255,255,.14); border-radius: 2mm; padding: .8mm 2.5mm; }
+.hub { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 4mm; border: 2px dashed #c9cfdd; border-radius: 4mm; padding: 3.5mm; }
+.hub b { font: 800 15pt 'Inter', sans-serif; color: var(--navy); }
+
+table.t { width: 100%; border-collapse: collapse; font-size: 9pt; }
+table.t th, table.t td { border-bottom: 1px solid var(--line); padding: 1.8mm 2mm; text-align: right; vertical-align: top; }
+table.t th { background: var(--ground); font-weight: 700; }
+table.t td.c, table.t th.c { text-align: center; }
+.yes { color: var(--green); font-weight: 700; }
+.no { color: #c0c3cc; }
+
+/* cover */
+.cover { padding: 0; background: radial-gradient(120% 80% at 90% 0%, #1d4f99 0%, transparent 55%), linear-gradient(160deg, #081226 0%, #0b1a33 55%, #10284f 100%); color: #fff; }
+.cover .in { flex: 1; display: flex; flex-direction: column; padding: 18mm 18mm 14mm; }
+.cover .top { display: flex; justify-content: space-between; align-items: center; }
+.cover .top img { height: 20mm; }
+.cover .ver { font: 700 9pt 'Inter', sans-serif; letter-spacing: .12em; color: rgba(255,255,255,.7); border: 1px solid rgba(255,255,255,.3); border-radius: 99px; padding: 1.2mm 4mm; }
+.cover .ttl { margin-top: 24mm; }
+.cover .ttl .en1 { font: 800 40pt/1.05 'Inter', sans-serif; letter-spacing: -.02em; direction: ltr; text-align: right; }
+.cover .ttl .en1 span { color: #5aa2ff; }
+.cover .ttl h1 { margin-top: 6mm; font-size: 21pt; font-weight: 700; color: #fff; }
+.cover .ttl p { margin-top: 3mm; font-size: 11.5pt; color: rgba(255,255,255,.78); max-width: 140mm; }
+.cover .art { margin-top: 12mm; position: relative; height: 92mm; }
+.cover .art .d { position: absolute; left: 0; top: 0; width: 140mm; border-radius: 3mm; overflow: hidden; box-shadow: 0 18px 50px rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.15); }
+.cover .art .d img { width: 100%; display: block; }
+.cover .art .m { position: absolute; right: 4mm; top: 10mm; width: 42mm; border-radius: 5mm; overflow: hidden; border: 2mm solid #0d0f16; box-shadow: 0 18px 50px rgba(0,0,0,.5); }
+.cover .art .m img { width: 100%; display: block; }
+.cover .bottom { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9.5pt; color: rgba(255,255,255,.75); border-top: 1px solid rgba(255,255,255,.18); padding-top: 5mm; }
+.cover .bottom b { color: #fff; font-size: 12pt; }
+
+/* contents */
+.toc { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1.6mm; }
+.toc li { display: flex; align-items: baseline; gap: 3mm; font-size: 10.2pt; }
+.toc li.ch { margin-top: 3mm; font-weight: 700; font-size: 11.5pt; color: var(--navy); }
+.toc li .dots { flex: 1; border-bottom: 1.5px dotted #c9cfdd; transform: translateY(-1.2mm); }
+.toc li [data-ref] { font: 700 9.5pt 'Inter', sans-serif; color: var(--blue); min-width: 6mm; text-align: left; }
+.back { background: linear-gradient(160deg, #081226, #0b1a33 60%, #10284f); color: #fff; padding: 0; }
+.back .in { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 6mm; padding: 20mm; }
+.back img { height: 26mm; }
+.back h2 { color: #fff; }
+.back p { color: rgba(255,255,255,.8); font-size: 11pt; }
+.back .contact { display: flex; gap: 6mm; margin-top: 4mm; }
+.back .contact div { border: 1px solid rgba(255,255,255,.25); border-radius: 3mm; padding: 3mm 6mm; font-size: 10.5pt; }
+.back .contact b { display: block; font: 700 12pt 'Inter', sans-serif; color: #fff; direction: ltr; }
+</style>
+</head>
+<body>
+
+<!-- =============================== COVER =============================== -->
+<section class="page cover" id="cover">
+  <div class="in">
+    <div class="top"><img src="../../../public/xtech.png" alt="XTECH"><span class="ver">VERSION 1.0</span></div>
+    <div class="ttl">
+      <div class="en1">CleanBase<br><span>Blueprint</span> V1</div>
+      <h1>الدليل الكامل لإدارة شركة التنظيف على CleanBase</h1>
+      <p>كل ما يحتاجه فريقك ليبدأ العمل من اليوم الأول: الإعداد خطوة بخطوة، رحلة الحجز من الطلب حتى تقييم العميل، وشرح كل قسم في لوحة التحكم بالصور.</p>
+    </div>
+    <div class="art">
+      <div class="d"><img src="shots/ar/overview.jpg" alt=""></div>
+      <div class="m"><img src="shots/ar/store-service.jpg" alt=""></div>
+    </div>
+    <div class="bottom">
+      <div><b>by XTECH</b><br>XTechnology Group</div>
+      <div class="en" style="text-align:left">xtechnology.group<br>+974 72262228</div>
+    </div>
+  </div>
+</section>
+
+<!-- =============================== CONTENTS =============================== -->
+<section class="page" id="toc">
+  <div class="run"><b>المحتويات</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <h2>المحتويات</h2>
+    <p class="lead">اقرأ الفصل الأول مرة واحدة عند بداية العمل، ثم استخدم الفصل الثاني كمرجع يومي لفريق التشغيل.</p>
+    <ol class="toc">
+      <li class="ch">مقدمة<span class="dots"></span><span data-ref="intro"></span></li>
+      <li>ما هو CleanBase ومن يستخدمه<span class="dots"></span><span data-ref="intro"></span></li>
+      <li>خريطة النظام<span class="dots"></span><span data-ref="map"></span></li>
+      <li class="ch">الفصل 1: البداية، الإعداد خطوة بخطوة<span class="dots"></span><span data-ref="ch1"></span></li>
+      <li>إنشاء الحساب والموافقة وتسجيل الدخول<span class="dots"></span><span data-ref="s-register"></span></li>
+      <li>جولة في لوحة التحكم<span class="dots"></span><span data-ref="s-overview"></span></li>
+      <li>الإعدادات والهوية وساعات العمل وقواعد العمل<span class="dots"></span><span data-ref="s-settings"></span></li>
+      <li>الخدمات ورابط الحجز<span class="dots"></span><span data-ref="s-services"></span></li>
+      <li>المناطق والسكن والمركبات والمستلزمات<span class="dots"></span><span data-ref="s-resources"></span></li>
+      <li>عمال النظافة ومستنداتهم<span class="dots"></span><span data-ref="s-cleaners"></span></li>
+      <li>السائقون وأعضاء الفريق والصلاحيات<span class="dots"></span><span data-ref="s-drivers"></span></li>
+      <li class="ch">الفصل 2: البروتوكول اليومي، من الطلب حتى التقييم<span class="dots"></span><span data-ref="ch2"></span></li>
+      <li>العميل يحجز من موقعك<span class="dots"></span><span data-ref="s-store"></span></li>
+      <li>قبول الطلب وإنشاء الحجوزات<span class="dots"></span><span data-ref="s-requests"></span></li>
+      <li>لوحة التوزيع وتنفيذ المهمة<span class="dots"></span><span data-ref="s-dispatch"></span></li>
+      <li>السائقون وتطبيق السائق<span class="dots"></span><span data-ref="s-driversboard"></span></li>
+      <li>الفاتورة والدفع<span class="dots"></span><span data-ref="s-invoice"></span></li>
+      <li>تقييم العميل والشكاوى<span class="dots"></span><span data-ref="s-reviews"></span></li>
+      <li class="ch">الفصل 3: باقي الأقسام<span class="dots"></span><span data-ref="ch3"></span></li>
+      <li>العملاء، المبيعات، العقود، الفريق، المال، التقارير<span class="dots"></span><span data-ref="s-clients"></span></li>
+      <li class="ch">الفصل 4: الروتين والنصائح<span class="dots"></span><span data-ref="ch4"></span></li>
+      <li>الروتين اليومي والأسبوعي والشهري<span class="dots"></span><span data-ref="routine"></span></li>
+      <li>أسئلة شائعة وحلول سريعة<span class="dots"></span><span data-ref="faq"></span></li>
+    </ol>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<!-- =============================== INTRO =============================== -->
+<section class="page" id="intro">
+  <div class="run"><b>مقدمة</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">مقدمة</span>
+    <h2>ما هو CleanBase؟</h2>
+    <p class="lead">CleanBase نظام واحد لإدارة شركة التنظيف بالكامل: الحجوزات، توزيع عمال النظافة والسائقين، العملاء والعقود، الفواتير والمصروفات والرواتب، والتقارير. يعمل من المتصفح على الكمبيوتر والهاتف، باللغتين العربية والإنجليزية، ولا يحتاج إلى تثبيت أي برنامج.</p>
+    <div class="cols2">
+      <div class="card"><h3>ماذا يحل لك؟</h3><ul>
+        <li>كل الحجوزات في مكان واحد بدل الدفاتر ورسائل واتساب المتفرقة.</li>
+        <li>تعرف من يعمل أين ومتى، ومن يوصل عمال النظافة ويعيدهم.</li>
+        <li>تعرف ما دخل وما خرج من المال، ومن لم يدفع بعد.</li>
+        <li>عملاؤك يحجزون بأنفسهم من رابط خاص بشركتك.</li>
+      </ul></div>
+      <div class="card"><h3>كيف تستخدم هذا الدليل؟</h3><ul>
+        <li>كل صورة عليها أرقام برتقالية ① ② ③.</li>
+        <li>تحت الصورة شرح لكل رقم: ما هو الزر وماذا يفعل.</li>
+        <li>أسماء الأزرار مكتوبة <span class="ui">هكذا</span> كما تظهر على الشاشة.</li>
+        <li>زر <span class="ui">English</span> أعلى الشاشة يبدّل لغة اللوحة في أي وقت.</li>
+      </ul></div>
+    </div>
+    <h3>من يستخدم النظام؟</h3>
+    <table class="t">
+      <tr><th>الشخص</th><th>ماذا يرى</th><th>أين يعمل</th></tr>
+      <tr><td><b>صاحب الشركة</b></td><td>كل شيء، بما في ذلك الإعدادات والفريق والمال</td><td>لوحة التحكم</td></tr>
+      <tr><td><b>المدير</b></td><td>كل شيء ما عدا الإعدادات</td><td>لوحة التحكم</td></tr>
+      <tr><td><b>منسّق التوزيع</b></td><td>الحجوزات، لوحة التوزيع، السائقون، العملاء، عمال النظافة، الخدمات، الجودة، العقود</td><td>لوحة التحكم</td></tr>
+      <tr><td><b>المحاسب</b></td><td>نظرة عامة، الفواتير، المصروفات، التقارير، التحليلات، العملاء، مركز الفريق</td><td>لوحة التحكم</td></tr>
+      <tr><td><b>عامل النظافة</b></td><td>حجوزاته فقط</td><td>لوحة التحكم (صفحة الحجوزات)</td></tr>
+      <tr><td><b>السائق</b></td><td>رحلاته اليوم وغدًا</td><td>تطبيق السائق على الهاتف</td></tr>
+      <tr><td><b>عميلك</b></td><td>الخدمات والأوقات المتاحة</td><td>موقع الحجز الخاص بشركتك</td></tr>
+    </table>
+    <div class="tip"><i>نصيحة</i><span>ابدأ أنت (صاحب الشركة) بالإعداد كاملًا كما في الفصل 1، ثم أضف فريقك. هكذا يجد الجميع النظام جاهزًا عند أول دخول.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="map">
+  <div class="run"><b>مقدمة</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">خريطة النظام</span>
+    <h2>كل الأقسام في صفحة واحدة</h2>
+    <p class="lead">القائمة الجانبية في لوحة التحكم مقسمة إلى مجموعات. هذه الخريطة تبين كل قسم وما الغرض منه، ثم الصفحات التي يستخدمها عملاؤك وسائقوك خارج اللوحة.</p>
+    <div class="map">
+      <div class="grp" style="background:#0b3d75"><h3>اليوم</h3><ul><li>نظرة عامة: صحة الشركة الآن</li><li>لوحة التوزيع: من يعمل أين</li><li>السائقون: الرحلات والتوصيل</li><li>الحجوزات: التقويم والطلبات</li></ul></div>
+      <div class="grp" style="background:#0f6b5a"><h3>العملاء</h3><ul><li>العملاء: الملفات والتاريخ</li><li>العملاء المحتملون وعروض الأسعار</li><li>العقود: الاشتراكات والدفعات الشهرية</li><li>الجودة: الشكاوى والتقييمات</li></ul></div>
+      <div class="grp" style="background:#5b3fb5"><h3>الفريق</h3><ul><li>عمال النظافة: الملفات والمستندات</li><li>مركز الفريق: الحضور والإجازات والرواتب</li><li>الخدمات: ما تبيعه وبكم</li><li>المناطق والمستلزمات</li></ul></div>
+      <div class="grp" style="background:#9a4a07"><h3>المال</h3><ul><li>الفواتير والدفعات</li><li>المصروفات</li><li>التقارير والتحليلات</li><li>سجل النشاط</li></ul></div>
+      <div class="grp" style="background:#3c4252"><h3>الإدارة</h3><ul><li>العمل: قواعد الحجز والفواتير والرسائل</li><li>الإعدادات: الهوية، الساعات، السائقون، الفريق</li><li>زر اللغة: العربية / English</li></ul></div>
+      <div class="grp" style="background:#1d6fd6"><h3>خارج اللوحة</h3><ul><li>موقع الحجز: لعملائك</li><li>تطبيق السائق: على هاتف السائق</li><li>صفحة التقييم: رابط يصل للعميل</li><li>بوابة العميل: يتابع حجوزاته</li></ul></div>
+      <div class="hub"><span>كلها مربوطة ببيانات واحدة:</span><b>CleanBase</b><span>أي تعديل يظهر فورًا عند الجميع.</span></div>
+    </div>
+    <div class="note"><i>مثال</i><span>عميل يحجز من موقعك ← يظهر الطلب في <span class="ui">الحجوزات</span> ← تقبله فيظهر في <span class="ui">لوحة التوزيع</span> وعند السائق ← بعد التنفيذ تصدر <span class="ui">الفاتورة</span> ← تطلب <span class="ui">التقييم</span> ← وكل ذلك يظهر في <span class="ui">التقارير</span>.</span></div>
+    <div class="tip"><i>للمدير الذكي</i><span>قسم <span class="ui">المدير الذكي</span> في آخر القائمة يظهر بعلامة «قريبًا». سيصلك تفصيله في إصدار قادم.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<!-- =============================== CHAPTER 1 =============================== -->
+<section class="page" id="ch1">
+  <div class="run"><b>الفصل 1: البداية</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <div class="band"><span class="num">1</span><div><h2>البداية: الإعداد خطوة بخطوة</h2><p>اتبع هذه الخطوات بالترتيب في يومك الأول. أغلبها يتم مرة واحدة فقط.</p></div></div>
+    <ol class="steps">
+      <li><div><b>أنشئ حسابك وانتظر الموافقة</b><span>اسمك، اسم الشركة، رقم التواصل، البريد وكلمة المرور.</span></div><em>5 دقائق</em></li>
+      <li><div><b>أكمل الملف العام والهوية</b><span>الشعار والألوان تظهر لعملائك في موقع الحجز.</span></div><em>الإعدادات</em></li>
+      <li><div><b>حدد ساعات العمل وقواعد العمل</b><span>أيام وساعات العمل، الحد الأدنى للإشعار، بيانات الفاتورة.</span></div><em>الإعدادات / العمل</em></li>
+      <li><div><b>أضف خدماتك وأسعارها</b><span>كل خدمة باسمها وسعرها ومدتها.</span></div><em>الخدمات</em></li>
+      <li><div><b>أضف المناطق والسكن والمركبات والمستلزمات</b><span>سكن العمال مهم ليعرف السائق من أين يأخذهم.</span></div><em>المناطق والمستلزمات</em></li>
+      <li><div><b>أضف عمال النظافة ومستنداتهم</b><span>الصورة، الهاتف، السكن، والإقامة والتأشيرة مع تاريخ الانتهاء.</span></div><em>عمال النظافة</em></li>
+      <li><div><b>أضف السائقين وأعضاء الفريق</b><span>كل سائق برقم هاتفه وكلمة مرور، وكل موظف بدوره.</span></div><em>الإعدادات</em></li>
+      <li><div><b>شارك رابط الحجز مع عملائك</b><span>على واتساب وإنستغرام وخرائط Google.</span></div><em>الخدمات</em></li>
+    </ol>
+    <div class="tip"><i>نصيحة</i><span>لا تحتاج إلى إكمال كل شيء في نفس اليوم. الخطوات 1 و4 و6 تكفي لتبدأ بتسجيل الحجوزات، والباقي تضيفه تدريجيًا.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-register">
+  <div class="run"><b>الفصل 1: البداية</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 1</span>
+    <h2>إنشاء الحساب</h2>
+    <p class="lead">افتح موقع CleanBase واضغط <span class="ui en">Sign up</span>، ثم املأ النموذج. صفحات التسجيل والدخول باللغة الإنجليزية، ولوحة التحكم بعدها تعمل بالعربية.</p>
+    <figure data-shot="register"></figure>
+    <ol class="legend">
+      <li><b>الاسم الكامل</b> (Your full name): اسمك كما سيظهر لفريقك.</li>
+      <li><b>اسم الشركة</b> (Company name): يظهر في موقع الحجز والفواتير.</li>
+      <li><b>رقم التواصل</b> (Contact number): رمز قطر <span class="en">+974</span> ثابت، اكتب 8 أرقام فقط.</li>
+      <li><b>البريد الإلكتروني</b> (Work email): ستدخل به في كل مرة.</li>
+      <li><b>كلمة المرور</b> (Password): 8 أحرف على الأقل. المؤشر الملون يبين قوتها.</li>
+      <li><b>إنشاء الحساب</b> (Create account): يرسل طلبك لفريق CleanBase.</li>
+    </ol>
+    <div class="tip"><i>موظف جديد؟</i><span>إذا كانت شركتك أضافتك كعضو في الفريق، اضغط <span class="ui en">My company invited me to join</span> في نفس الصفحة وسجّل بنفس البريد الذي أضافوه، دون اسم شركة.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-approve">
+  <div class="run"><b>الفصل 1: البداية</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 1 (تابع)</span>
+    <h2>المراجعة، ثم تسجيل الدخول</h2>
+    <p class="lead">كل حساب جديد يراجعه فريق CleanBase قبل فتحه. في هذه الأثناء تظهر لك شاشة «حسابك قيد المراجعة».</p>
+    <div class="pair">
+      <figure data-shot="locked"></figure>
+      <figure data-shot="login"></figure>
+    </div>
+    <div class="cols2">
+      <div><h3>شاشة المراجعة</h3><ol class="legend one">
+        <li><b>المراحل</b>: تم إنشاء الحساب، ثم المراجعة، ثم فتح المساحة.</li>
+        <li><b>تواصل مع فريقنا على واتساب</b> لتسريع المراجعة.</li>
+        <li><b>تحقق من حالتي</b>. الصفحة تتحقق وحدها كل 15 ثانية، وتفتح لوحتك تلقائيًا عند الموافقة.</li>
+      </ol></div>
+      <div><h3>صفحة الدخول</h3><ol class="legend one">
+        <li><b>البريد الإلكتروني</b> الذي سجلت به.</li>
+        <li><b>كلمة المرور</b>. نسيتها؟ اضغط <span class="en">Forgot password?</span> ليصلك رابط على بريدك.</li>
+        <li><b>تسجيل الدخول</b> (Sign in) يفتح لوحة التحكم.</li>
+      </ol></div>
+    </div>
+    <div class="note"><i>بعد الموافقة</i><span>ادخل بنفس البريد وكلمة المرور. لا تحتاج إلى حساب جديد، ويبقى دخولك محفوظًا على نفس الجهاز.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-overview">
+  <div class="run"><b>الفصل 1: البداية</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 2</span>
+    <h2>جولة في لوحة التحكم: نظرة عامة</h2>
+    <p class="lead">هذه أول صفحة تراها بعد الدخول. تعطيك حال شركتك الآن: المال، المهام، والأشياء التي تحتاج قرارك اليوم.</p>
+    <figure data-shot="overview"></figure>
+    <ol class="legend">
+      <li><b>القائمة الجانبية</b>: كل أقسام النظام. على الهاتف تفتحها من زر ☰.</li>
+      <li><b>زر اللغة</b>: يبدّل بين العربية و English، ويحفظ اختيارك على الجهاز.</li>
+      <li><b>الفترة</b>: 7 أيام، 30 يومًا، 90 يومًا أو السنة. كل الأرقام تتغير معها.</li>
+      <li><span class="ui">حجز جديد</span>: أسرع طريقة لتسجيل حجز من الهاتف.</li>
+      <li><b>المؤشرات</b>: الإيرادات، المبالغ المحصّلة، المستحقة، صافي الربح، مهام اليوم.</li>
+      <li><span class="ui">يحتاج انتباهك</span>: طلبات بانتظارك، مهام بلا عامل، فواتير، شكاوى، مستندات تنتهي.</li>
+    </ol>
+    <div class="tip"><i>نصيحة</i><span>اجعل <span class="ui">يحتاج انتباهك</span> أول ما تفتحه كل صباح. الضغط على أي سطر يأخذك مباشرة إلى المكان الذي تعالجه فيه.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-settings">
+  <div class="run"><b>الفصل 1: البداية</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 3</span>
+    <h2>الإعدادات: الملف العام</h2>
+    <p class="lead">من القائمة الجانبية افتح <span class="ui">الإعدادات</span>. في الأعلى تبويبات لكل جزء من إعدادات شركتك.</p>
+    <figure data-shot="settings-profile"></figure>
+    <ol class="legend">
+      <li><span class="ui">الملف العام</span>: اسم الشركة وبيانات التواصل التي تظهر للعملاء.</li>
+      <li><span class="ui">الهوية البصرية</span>: الشعار والألوان لموقع الحجز.</li>
+      <li><span class="ui">ساعات العمل</span>: أيام وساعات استقبال الحجوزات.</li>
+      <li><span class="ui">السائقون</span>: حسابات السائقين ورابط تطبيقهم.</li>
+      <li><span class="ui">أعضاء الفريق</span>: المدير والمنسق والمحاسب وغيرهم.</li>
+      <li><span class="ui">حفظ التغييرات</span>: لا تنسَ الحفظ بعد كل تعديل.</li>
+    </ol>
+    <div class="tip"><i>التقييمات</i><span>في تبويب <span class="ui">التقييمات</span> يمكنك وضع رابط تقييم شركتك على خرائط Google، ليصل العميل إليه بعد كل خدمة.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-branding">
+  <div class="run"><b>الفصل 1: البداية</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 3 (تابع)</span>
+    <h2>الهوية البصرية لموقع الحجز</h2>
+    <p class="lead">الشعار والألوان التي تختارها هنا يراها عملاؤك في موقع الحجز، ويراها سائقوك في صفحة دخولهم.</p>
+    <figure data-shot="settings-branding"></figure>
+    <ol class="legend">
+      <li><span class="ui">رفع الشعار</span>: صورة PNG أو JPG أو WebP. الأفضل شعار بخلفية شفافة.</li>
+      <li><span class="ui">ألوان جاهزة</span>: اختر لوحة ألوان بضغطة، أو حدد لونك بالرمز.</li>
+      <li><span class="ui">معاينة</span>: ترى شكل موقع الحجز قبل الحفظ.</li>
+    </ol>
+    <div class="warn"><i>انتبه</i><span>إذا كان اللون الرئيسي فاتحًا جدًا، يظهر لك تنبيه لأن الأزرار ستكون صعبة القراءة. اختر لونًا أغمق.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-hours">
+  <div class="run"><b>الفصل 1: البداية</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 3 (تابع)</span>
+    <h2>ساعات العمل</h2>
+    <p class="lead">حدد لكل يوم من أيام الأسبوع إن كان يوم عمل، ومن أي ساعة إلى أي ساعة. موقع الحجز لا يعرض للعميل إلا الأوقات داخل هذه الساعات.</p>
+    <figure data-shot="settings-hours" data-class="mid"></figure>
+    <div class="cols2">
+      <div class="card"><h3>يوم مغلق</h3><p>أطفئ اليوم (مثل الجمعة) فلا يظهر في تقويم موقع الحجز أبدًا.</p></div>
+      <div class="card"><h3>ساعات مختلفة</h3><p>لكل يوم ساعاته الخاصة، مثلًا السبت من 8:00 إلى 14:00 فقط.</p></div>
+    </div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-business">
+  <div class="run"><b>الفصل 1: البداية</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 3 (تابع)</span>
+    <h2>العمل: قواعد الحجز والفواتير والرسائل</h2>
+    <p class="lead">صفحة <span class="ui">العمل</span> في القائمة الجانبية تحفظ القواعد التي يستخدمها النظام تلقائيًا في كل حجز وفاتورة ورسالة.</p>
+    <figure data-shot="business"></figure>
+    <ol class="legend">
+      <li><b>الاسم القانوني</b> والسجل التجاري ونسبة الضريبة: تظهر على الفاتورة.</li>
+      <li><b>بادئة الفاتورة</b> وأيام السداد والبيانات البنكية وتذييل الفاتورة.</li>
+      <li><b>قواعد الحجز</b>: الحد الأدنى للإشعار، الإلغاء المجاني، وكم يومًا مسبقًا يمكن الحجز.</li>
+      <li><span class="ui">حفظ التغييرات</span>.</li>
+    </ol>
+    <div class="tip"><i>رسائل واتساب</i><span>في نفس الصفحة نصوص الرسائل الجاهزة (تأكيد الحجز، التذكير، الفاتورة، طلب التقييم...). عدّلها بأسلوب شركتك، والنظام يملأ اسم العميل والتاريخ والوقت تلقائيًا.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-services">
+  <div class="run"><b>الفصل 1: البداية</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 4</span>
+    <h2>الخدمات ورابط الحجز</h2>
+    <p class="lead">صفحة <span class="ui">الخدمات</span> فيها ما تبيعه، ورابط موقع الحجز الخاص بشركتك، وإحصاءات زوار الموقع.</p>
+    <figure data-shot="services"></figure>
+    <ol class="legend">
+      <li><span class="ui">إضافة خدمة</span>: خدمة جديدة باسمها وسعرها ومدتها.</li>
+      <li><span class="ui">نسخ الرابط</span>: رابط موقع الحجز لتضعه في إنستغرام أو خرائط Google.</li>
+      <li><span class="ui">مشاركة عبر واتساب</span>: يرسل الرابط مباشرة لعميل أو مجموعة.</li>
+    </ol>
+    <div class="tip"><i>إحصاءات المتجر</i><span>أسفل الصفحة ترى كم شخصًا فتح الرابط، وأين توقف (اختار خدمة؟ اختار وقتًا؟)، وكم أرسل طلبًا فعلًا.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-serviceform">
+  <div class="run"><b>الفصل 1: البداية</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 4 (تابع)</span>
+    <h2>إضافة خدمة</h2>
+    <p class="lead">بعد الضغط على <span class="ui">إضافة خدمة</span> تفتح هذه الصفحة. المدة مهمة: بها يعرف النظام متى يصبح عامل النظافة متاحًا مرة أخرى.</p>
+    <figure data-shot="service-form"></figure>
+    <ol class="legend">
+      <li><b>الاسم</b>: مثل «تنظيف عميق» أو «تنظيف كنب».</li>
+      <li><b>السعر بالريال</b> لكل زيارة.</li>
+      <li><b>المدة</b> بالساعات والدقائق.</li>
+      <li><span class="ui">إظهار في متجر الحجز الإلكتروني</span>: أطفئه لخدمة تبيعها بالهاتف فقط.</li>
+      <li><b>حفظ</b>.</li>
+    </ol>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-resources">
+  <div class="run"><b>الفصل 1: البداية</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 5</span>
+    <h2>المناطق والسكن والمركبات</h2>
+    <p class="lead">صفحة <span class="ui">المناطق والمستلزمات</span> فيها أربعة تبويبات. أكملها قبل استخدام السائقين.</p>
+    <figure data-shot="resources-zones"></figure>
+    <ol class="legend">
+      <li><span class="ui">المناطق</span>: أسماء الأحياء التي تغطيها، ورسوم تنقل إضافية إن وجدت.</li>
+      <li><span class="ui">أماكن السكن</span>: عنوان سكن العمال ورابط الخريطة. منه يبدأ السائق رحلته.</li>
+      <li><span class="ui">المركبات</span>: رقم اللوحة، السائق، عدد المقاعد، وتاريخ انتهاء التأمين.</li>
+      <li><span class="ui">المستلزمات</span>: المخزون ومتى تحتاج إلى إعادة الطلب.</li>
+      <li><span class="ui">إضافة منطقة</span>.</li>
+    </ol>
+    <div class="tip"><i>نصيحة</i><span>اكتب في كل منطقة أسماء الأحياء مفصولة بفواصل (مثل: الدفنة، لوسيل، اللؤلؤة). النظام يعرف منطقة كل حجز من عنوانه.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-supplies">
+  <div class="run"><b>الفصل 1: البداية</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 5 (تابع)</span>
+    <h2>المستلزمات والمخزون</h2>
+    <p class="lead">سجّل كل مادة تستخدمها (منظف أرضيات، مناشف، أكياس...). عندما يسجل الفريق ما استخدمه في مهمة، ينقص المخزون تلقائيًا.</p>
+    <figure data-shot="resources-supplies"></figure>
+    <ol class="legend">
+      <li><span class="ui">إضافة صنف</span>: الاسم، الوحدة، الكمية، حد إعادة الطلب، وسعر الوحدة.</li>
+      <li><b>الجدول</b>: الكمية المتبقية لكل صنف. عندما تصل إلى حد إعادة الطلب يظهر تنبيه في <span class="ui">يحتاج انتباهك</span>.</li>
+    </ol>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-cleaners">
+  <div class="run"><b>الفصل 1: البداية</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 6</span>
+    <h2>عمال النظافة</h2>
+    <p class="lead">صفحة <span class="ui">عمال النظافة</span> تعرض كل عامل في بطاقة: الجنسية، العمر، الهاتف، المستندات، الاشتراكات المعيّنة له، وساعات عمله وعدد مهامه.</p>
+    <figure data-shot="cleaners"></figure>
+    <ol class="legend">
+      <li><span class="ui">إضافة عامل نظافة</span>.</li>
+      <li><b>البحث</b> بالاسم أو الجنسية.</li>
+      <li><span class="ui">المستندات</span>: الإقامة، التأشيرة، البطاقة الصحية... مع حالة كل مستند.</li>
+    </ol>
+    <div class="tip"><i>ملف العامل</i><span>الضغط على بطاقة العامل يفتح جدوله، وزر القلم يعدّل بياناته. أفضل عامل في آخر 30 يومًا يظهر أعلى الصفحة.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-cleanerform">
+  <div class="run"><b>الفصل 1: البداية</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 6 (تابع)</span>
+    <h2>تسجيل عامل نظافة جديد</h2>
+    <p class="lead">املأ البيانات الأساسية. الصورة تظهر لعملائك في موقع الحجز عندما يختارون عامل النظافة.</p>
+    <figure data-shot="cleaner-form"></figure>
+    <ol class="legend">
+      <li><b>الصورة</b> (اختيارية): صورة واضحة للوجه.</li>
+      <li><b>الاسم الكامل</b>.</li>
+      <li><b>رقم الهاتف</b>.</li>
+      <li><b>السكن</b>: من أين يأخذه السائق ويعيده.</li>
+    </ol>
+    <div class="note"><i>فيديو تعريفي</i><span>يمكنك أيضًا رفع فيديو قصير يعرّف بعامل النظافة (اختياري)، يُحفظ في ملفه وتشاهده من بطاقته.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-documents">
+  <div class="run"><b>الفصل 1: البداية</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 6 (تابع)</span>
+    <h2>مستندات العامل وتواريخ الانتهاء</h2>
+    <p class="lead">من زر <span class="ui">المستندات</span> في بطاقة العامل. احفظ صورة أو PDF لكل مستند مع تاريخ انتهائه، والنظام ينبهك قبل الانتهاء.</p>
+    <figure data-shot="documents"></figure>
+    <ol class="legend">
+      <li><b>نوع المستند</b>: البطاقة الشخصية، التأشيرة، البطاقة الصحية، جواز السفر، العقد، أخرى.</li>
+      <li><b>تاريخ الانتهاء</b>.</li>
+      <li><b>صورة أو PDF</b>: حتى من كاميرا الهاتف، بحد أقصى 10 ميغابايت.</li>
+      <li><span class="ui">حفظ المستند</span>.</li>
+      <li><b>الحالة</b>: صالح (أخضر)، تنتهي قريبًا (برتقالي)، منتهية (أحمر).</li>
+    </ol>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-drivers">
+  <div class="run"><b>الفصل 1: البداية</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 7</span>
+    <h2>السائقون</h2>
+    <p class="lead">في <span class="ui">الإعدادات</span> ← <span class="ui">السائقون</span>. كل سائق يدخل من صفحة خاصة بشركتك برقم هاتفه وكلمة مروره، ويرى تطبيق السائق فقط.</p>
+    <figure data-shot="drivers-settings"></figure>
+    <ol class="legend">
+      <li><span class="ui">صفحة دخول السائق</span>: الرابط الخاص بشركتك.</li>
+      <li><span class="ui">نسخ الرابط</span> لإرساله للسائقين.</li>
+      <li><span class="ui">إضافة سائق</span>: الاسم، رقم الهاتف، وكلمة مرور.</li>
+      <li><span class="ui">تعيين كلمة المرور</span> إذا نسيها السائق.</li>
+    </ol>
+    <div class="tip"><i>نصيحة</i><span>بعد إضافة السائق يظهر لك زر لإرسال الرابط ورقم الهاتف وكلمة المرور له على واتساب مباشرة. كلمة المرور لا تظهر مرة أخرى بعد إغلاق النافذة.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-team">
+  <div class="run"><b>الفصل 1: البداية</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 7 (تابع)</span>
+    <h2>أعضاء الفريق والصلاحيات</h2>
+    <p class="lead">في <span class="ui">الإعدادات</span> ← <span class="ui">أعضاء الفريق</span>. أضف كل موظف بالبريد والدور المناسب، ثم يسجّل هو بنفس البريد ويختار <span class="en">My company invited me to join</span>.</p>
+    <figure data-shot="team-members" data-class="mid"></figure>
+    <ol class="legend">
+      <li><span class="ui">إضافة عضو</span>: الاسم، البريد، والدور.</li>
+      <li><b>القائمة</b>: كل حسابات شركتك ودور كل منها.</li>
+    </ol>
+    <table class="t">
+      <tr><th>الدور</th><th>مناسب لـ</th></tr>
+      <tr><td><b>مدير</b></td><td>من يدير الشركة معك: يرى كل شيء ما عدا الإعدادات.</td></tr>
+      <tr><td><b>منسّق التوزيع</b></td><td>من يستقبل الحجوزات ويوزع العمال والسائقين.</td></tr>
+      <tr><td><b>محاسب</b></td><td>الفواتير والمصروفات والرواتب والتقارير.</td></tr>
+      <tr><td><b>موظف عمليات / عامل نظافة ميداني</b></td><td>يرى الحجوزات فقط.</td></tr>
+    </table>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<!-- =============================== CHAPTER 2 =============================== -->
+<section class="page" id="ch2">
+  <div class="run"><b>الفصل 2: البروتوكول اليومي</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <div class="band"><span class="num">2</span><div><h2>البروتوكول اليومي: من الطلب حتى التقييم</h2><p>الطريق الذي يمر به كل حجز. اتبعه كل يوم، وكل خطوة لها صفحة في هذا الفصل.</p></div></div>
+    <div class="flow">
+      <div class="st"><div class="ic" style="background:#1d6fd6">1</div><h3>يصل الطلب</h3><p>من موقع الحجز، أو تسجله أنت من مكالمة أو رسالة واتساب.</p><span class="where">موقع الحجز / حجز جديد</span></div>
+      <div class="st"><div class="ic" style="background:#0b3d75">2</div><h3>تقبل وتعيّن</h3><p>تقبل الطلب وتختار عامل النظافة. النظام يمنع التعارض في الوقت.</p><span class="where">الحجوزات</span></div>
+      <div class="st rowend"><div class="ic" style="background:#5b3fb5">3</div><h3>تجهّز اليوم</h3><p>لوحة التوزيع: العامل، المركبة، المنطقة، وقائمة المهام.</p><span class="where">لوحة التوزيع</span></div>
+      <div class="st"><div class="ic" style="background:#0f6b5a">4</div><h3>التوصيل</h3><p>تعيّن سائقًا، والسائق يتابع رحلته من هاتفه خطوة بخطوة.</p><span class="where">السائقون / تطبيق السائق</span></div>
+      <div class="st"><div class="ic" style="background:#9a4a07">5</div><h3>التنفيذ</h3><p>بدء المهمة، قائمة المهام، صور قبل وبعد، والمستلزمات المستخدمة.</p><span class="where">لوحة التوزيع</span></div>
+      <div class="st rowend"><div class="ic" style="background:#b42318">6</div><h3>الفاتورة والدفع</h3><p>فاتورة من المهام المكتملة، ثم تسجيل الدفعة كاملة أو جزءًا.</p><span class="where">الفواتير</span></div>
+      <div class="st"><div class="ic" style="background:#c27c0e">7</div><h3>طلب التقييم</h3><p>رابط خاص على واتساب، والعميل يقيّم من 1 إلى 5 نجوم.</p><span class="where">الجودة ← التقييمات</span></div>
+      <div class="st"><div class="ic" style="background:#3c4252">8</div><h3>النشر أو المعالجة</h3><p>تنشر التقييم الجيد، وتسجل الشكوى وتعالجها إن وجدت.</p><span class="where">الجودة</span></div>
+      <div class="st end"><div class="ic" style="background:#1f8a4c">✓</div><h3>كل شيء في التقارير</h3><p>الإيرادات، أداء العمال، العملاء، والأرباح تتحدث تلقائيًا.</p><span class="where">التقارير / نظرة عامة</span></div>
+    </div>
+    <div class="tip"><i>القاعدة الذهبية</i><span>لا تبقِ أي طلب بلا رد ولا أي مهمة بلا عامل. كلاهما يظهر لك في <span class="ui">يحتاج انتباهك</span> وفي أعلى صفحة <span class="ui">الحجوزات</span>.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-store">
+  <div class="run"><b>الفصل 2: البروتوكول اليومي</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 1: يصل الطلب</span>
+    <h2>العميل يحجز من موقعك</h2>
+    <p class="lead">عندما يفتح العميل رابط الحجز يرى شعارك وألوانك. يختار الخدمة، ثم عامل النظافة أو «أي عامل متاح»، ثم اليوم والوقت، ثم يكتب بياناته. لا يدفع شيئًا الآن.</p>
+    <div class="phones">
+      <figure data-shot="store-service"></figure>
+      <figure data-shot="store-time"></figure>
+    </div>
+    <div class="cols2">
+      <ol class="legend one">
+        <li><b>زر اللغة</b>: العميل يختار العربية أو الإنجليزية.</li>
+        <li><b>المراحل الأربع</b>: الخدمة، عامل النظافة، التاريخ والوقت، البيانات.</li>
+        <li><b>بطاقة الخدمة</b> بالسعر والمدة.</li>
+      </ol>
+      <ol class="legend one" start="1">
+        <li><b>التقويم</b>: الأيام المغلقة والمكتملة لا تُختار.</li>
+        <li><b>الأوقات</b>: الأوقات المحجوزة تظهر رمادية ومشطوبة.</li>
+      </ol>
+    </div>
+    <div class="note"><i>بعد الإرسال</i><span>يبقى الوقت محجوزًا لهذا العميل حتى تقبل أو ترفض، فلا يأخذه عميل آخر.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-requests">
+  <div class="run"><b>الفصل 2: البروتوكول اليومي</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 2: تقبل وتعيّن</span>
+    <h2>طلبات الحجز</h2>
+    <p class="lead">كل طلب من موقعك يظهر أعلى صفحة <span class="ui">الحجوزات</span> في <span class="ui">طلبات الحجز</span>، مع اسم العميل وهاتفه والخدمة والوقت والعنوان وملاحظته.</p>
+    <figure data-shot="requests"></figure>
+    <ol class="legend">
+      <li><b>الطلب</b>: كل التفاصيل، وعلامة «من متجرك».</li>
+      <li><span class="ui">قبول</span>: بعد اختيار عامل النظافة. يصبح الحجز مؤكدًا.</li>
+      <li><span class="ui">رفض</span>: مع سبب، ويتحرر الوقت لغيره.</li>
+      <li><span class="ui">حجز جديد</span>: لتسجيل حجز جاء بالهاتف أو واتساب.</li>
+    </ol>
+    <div class="warn"><i>انتبه</i><span>العامل الذي طلبه العميل يظهر مكتوبًا بجانبه «مطلوب». يمكنك تغييره، لكن الأفضل احترام اختيار العميل.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-bookingform">
+  <div class="run"><b>الفصل 2: البروتوكول اليومي</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 2 (تابع)</span>
+    <h2>تسجيل حجز جديد بنفسك</h2>
+    <p class="lead">للحجوزات التي تصلك بالهاتف أو واتساب. السعر والعنوان يُملآن تلقائيًا عند اختيار العميل والخدمة.</p>
+    <figure data-shot="booking-form"></figure>
+    <ol class="legend">
+      <li><b>اختر عميلًا موجودًا</b>، أو اكتب اسم وهاتف عميل جديد فيُضاف تلقائيًا.</li>
+      <li><b>الخدمة</b>: يأتي سعرها ومدتها معها.</li>
+      <li><b>عامل النظافة</b>: أو اتركه «بلا عامل» وعيّنه لاحقًا.</li>
+      <li><b>التاريخ والوقت</b>، ثم الحالة وحالة الدفع، ثم تأكيد الحجز.</li>
+    </ol>
+    <div class="warn"><i>تعارض</i><span>إذا كان عامل النظافة مشغولًا في نفس الوقت، يسألك النظام قبل الحفظ. وإذا كان في إجازة أو محجوزًا لعقد شهري يظهر لك ذلك أيضًا.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-calendar">
+  <div class="run"><b>الفصل 2: البروتوكول اليومي</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 2 (تابع)</span>
+    <h2>تقويم الحجوزات</h2>
+    <p class="lead">تحت الطلبات يوجد تقويم الشهر بكل الحجوزات، مع تصفية حسب عامل النظافة أو الحالة، والبحث بالعميل أو العنوان. زر <span class="ui">عرض الجدول</span> يعرضها كقائمة يمكن تصديرها بزر <span class="ui">تصدير CSV</span>.</p>
+    <figure data-shot="calendar"></figure>
+    <ol class="legend">
+      <li><b>بطاقة الحجز</b>: الوقت، السعر، العميل، عامل النظافة، والحالة (هنا: قيد الانتظار). اضغطها لفتح التفاصيل.</li>
+      <li><b>حجز بلا عامل</b>: يظهر بالأحمر «غير معيّن». عيّن له عاملًا من لوحة التوزيع.</li>
+      <li><span class="ui">اليوم</span>: يوم اليوم مميز بدائرة، وبجانبه عدد حجوزاته. زر <b>+</b> في أي يوم يضيف حجزًا فيه.</li>
+    </ol>
+    <div class="tip"><i>الألوان</i><span>كل حالة بلون: قيد الانتظار (برتقالي)، تم التأكيد (أزرق)، تم (أخضر). الأسهم أعلى التقويم تنقلك بين الأشهر.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-dispatch">
+  <div class="run"><b>الفصل 2: البروتوكول اليومي</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 3: تجهّز اليوم</span>
+    <h2>لوحة التوزيع</h2>
+    <p class="lead">صورة يومك في شاشة واحدة: المهام بلا عامل، ثم عمود لكل عامل نظافة بمهامه وساعاته المحجوزة.</p>
+    <figure data-shot="dispatch"></figure>
+    <ol class="legend">
+      <li><b>اليوم</b>: اختر أي يوم لتراه.</li>
+      <li><span class="ui">غير معيّن</span>: مهام تحتاج إلى عامل. ابدأ بها.</li>
+      <li><b>عمود كل عامل</b>: مهامه بالوقت. اضغط أي مهمة لتفتحها.</li>
+    </ol>
+    <div class="tip"><i>نصيحة</i><span>افتح لوحة التوزيع لليوم التالي كل مساء، وتأكد أن كل مهمة لها عامل ومركبة قبل نهاية اليوم.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-job">
+  <div class="run"><b>الفصل 2: البروتوكول اليومي</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 5: التنفيذ</span>
+    <h2>صفحة المهمة</h2>
+    <p class="lead">عند الضغط على مهمة في لوحة التوزيع تفتح صفحتها: كل ما يخص هذه الزيارة من البداية للنهاية.</p>
+    <figure data-shot="job" data-class="narrow"></figure>
+    <ol class="legend">
+      <li><b>عامل النظافة</b>: تغييره من هنا.</li>
+      <li><b>المركبة</b> التي توصله.</li>
+      <li><b>قائمة المهام</b>: تُعلَّم أثناء العمل، ويمكن إضافة مهام خاصة.</li>
+      <li><b>صور قبل العمل وبعده</b>: دليلك أمام العميل.</li>
+      <li><span class="ui">بدء المهمة</span> ثم <span class="ui">إنهاء المهمة</span>: يسجل الوقت الفعلي.</li>
+      <li><span class="ui">المستلزمات المستخدمة</span>: اختر المادة والكمية ثم <span class="ui">تسجيل الاستخدام</span>، فينقص المخزون.</li>
+    </ol>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-driversboard">
+  <div class="run"><b>الفصل 2: البروتوكول اليومي</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 4: التوصيل</span>
+    <h2>لوحة السائقين</h2>
+    <p class="lead">صفحة <span class="ui">السائقون</span> تعطي كل حجز سائقًا، وتحسب لكل رحلة متى ينطلق من السكن، ومتى يصل إلى العميل، ومتى يعيد العامل.</p>
+    <figure data-shot="drivers-board"></figure>
+    <ol class="legend">
+      <li><span class="ui">نسخ رابط دخول السائق</span>.</li>
+      <li><span class="ui">تعيين الكل</span>: يقترح النظام السائق الأقل انشغالًا لكل حجز.</li>
+      <li><b>اختيار السائق</b> لحجز معيّن، ثم تعيين.</li>
+    </ol>
+    <div class="tip"><i>متابعة مباشرة</i><span>بعد التعيين ترى حالة كل رحلة: مخطط لها، في الطريق، عند العميل، في الاستلام، عاد إلى السكن. والرحلة المتأخرة تظهر بالأحمر.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-driverapp">
+  <div class="run"><b>الفصل 2: البروتوكول اليومي</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 4 (تابع)</span>
+    <h2>تطبيق السائق</h2>
+    <p class="lead">يفتحه السائق من الرابط على هاتفه ويدخل برقمه وكلمة مروره. يرى رحلات اليوم وغدًا، وفي الأعلى «المهمة الآن» بزر واحد كبير.</p>
+    <div class="side">
+      <figure data-shot="driver-app"></figure>
+      <div style="display:flex;flex-direction:column;gap:3mm">
+        <h3>الأزرار بالترتيب</h3>
+        <ol class="steps">
+          <li><div><b>أنا في الطريق للاستلام</b><span>يتجه إلى سكن العمال.</span></div><em></em></li>
+          <li><div><b>عامل النظافة في السيارة</b><span>استلمه من السكن.</span></div><em></em></li>
+          <li><div><b>تم التوصيل إلى العميل</b><span>بداية وقت التنظيف.</span></div><em></em></li>
+          <li><div><b>أنا في الطريق للاستلام من العميل</b><span>قرب نهاية الخدمة.</span></div><em></em></li>
+          <li><div><b>عامل النظافة في السيارة</b><span>انتهت الخدمة.</span></div><em></em></li>
+          <li><div><b>العودة إلى السكن</b><span>اكتملت الرحلة.</span></div><em></em></li>
+        </ol>
+        <div class="tip"><i>للسائق</i><span><b>افتح الخريطة</b> يفتح العنوان في خرائط الهاتف، وزر الهاتف يتصل بالعامل أو العميل، و«تراجع» يصحح ضغطة خاطئة.</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-invoice">
+  <div class="run"><b>الفصل 2: البروتوكول اليومي</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 6: الفاتورة والدفع</span>
+    <h2>إنشاء فاتورة</h2>
+    <p class="lead">في <span class="ui">الفواتير</span> اضغط <span class="ui">فاتورة جديدة</span>. عند اختيار العميل تظهر مهامه المكتملة التي لم تُفوتر بعد.</p>
+    <figure data-shot="invoice-new"></figure>
+    <ol class="legend">
+      <li><b>العميل</b>.</li>
+      <li><b>المهام المكتملة</b>: علّم ما تريد إدراجه. ويمكن إضافة سطور خاصة.</li>
+      <li><span class="ui">إنشاء وإرسال</span>، أو <span class="ui">حفظ كمسودة</span>.</li>
+    </ol>
+    <div class="tip"><i>خصم وأكواد</i><span>في نفس الصفحة: خصم بالريال، أو كود عرض ترويجي، وتاريخ الاستحقاق (الافتراضي من صفحة <span class="ui">العمل</span>).</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-payment">
+  <div class="run"><b>الفصل 2: البروتوكول اليومي</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 6 (تابع)</span>
+    <h2>تسجيل الدفع وإرسال الفاتورة</h2>
+    <p class="lead">اضغط أي فاتورة في الجدول لتفتح تفاصيلها: السطور، الخصم، المدفوع، والرصيد المتبقي.</p>
+    <figure data-shot="invoice" data-class="narrow"></figure>
+    <ol class="legend">
+      <li><b>سطور الفاتورة</b>، ثم المجموع والخصم والمدفوع والرصيد. الحالة أعلاها: مسودة، مرسلة، مدفوعة جزئيًا، مدفوعة، متأخرة.</li>
+      <li><span class="ui">تسجيل الدفعة</span>: المبلغ والطريقة (نقدًا، بطاقة، تحويل، إلكتروني).</li>
+      <li><span class="ui">واتساب</span>: يرسل الفاتورة للعميل.</li>
+      <li><span class="ui">طباعة</span>: نسخة ورقية أو PDF.</li>
+    </ol>
+    <div class="warn"><i>انتبه</i><span>لا يقبل النظام دفعة أكبر من الرصيد المتبقي. لإرجاع مبلغ للعميل اختر «استرداد» في نفس المكان.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-reviews">
+  <div class="run"><b>الفصل 2: البروتوكول اليومي</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 7: طلب التقييم</span>
+    <h2>التقييمات</h2>
+    <p class="lead">في <span class="ui">الجودة</span> ← <span class="ui">التقييمات</span>. أرسل للعميل رابطًا خاصًا بعد كل خدمة. يقيّم من هاتفه، وأنت تقرر ما يُنشر.</p>
+    <figure data-shot="reviews-ask"></figure>
+    <ol class="legend">
+      <li><span class="ui">طلب تقييمات</span>: آخر المهام المكتملة.</li>
+      <li><span class="ui">إرسال عبر واتساب</span>: رسالة جاهزة فيها الرابط.</li>
+      <li><span class="ui">منشور</span>: التقييمات التي قبلتها.</li>
+    </ol>
+    <div class="note"><i>الموافقة</i><span>كل تقييم جديد يصل إلى <span class="ui">بانتظار الموافقة</span>: اختر <span class="ui">قبول ونشر</span> أو «لا تنشر». التقييمات المنشورة فقط تدخل في متوسط تقييم الشركة والعمال.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-complaints">
+  <div class="run"><b>الفصل 2: البروتوكول اليومي</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">الخطوة 8: المعالجة</span>
+    <h2>الشكاوى</h2>
+    <p class="lead">إذا اشتكى عميل، سجّل الشكوى فورًا حتى لا تُنسى، واربطها بعامل النظافة المعني لتظهر في أدائه.</p>
+    <figure data-shot="complaints"></figure>
+    <ol class="legend">
+      <li><span class="ui">تسجيل شكوى</span>: العميل، العامل، الخطورة، الموضوع، وما حدث.</li>
+      <li><span class="ui">حل</span>: اكتب ما فعلته للعميل (إعادة الخدمة، خصم...) وتُغلق الشكوى.</li>
+    </ol>
+    <div class="tip"><i>نصيحة</i><span>الشكاوى المفتوحة تظهر في <span class="ui">يحتاج انتباهك</span>. اجعل هدفك إغلاق كل شكوى خلال 48 ساعة.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<!-- =============================== CHAPTER 3 =============================== -->
+<section class="page" id="ch3">
+  <div class="run"><b>الفصل 3: باقي الأقسام</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <div class="band"><span class="num">3</span><div><h2>باقي الأقسام</h2><p>العملاء والمبيعات والعقود والفريق والمال والتقارير.</p></div></div>
+    <div id="s-clients" style="display:flex;flex-direction:column;gap:3mm">
+      <h2>العملاء</h2>
+      <p class="lead">كل عميل في بطاقة: هاتفه، عنوانه، تاريخ انضمامه، وعدد خططه النشطة. الضغط على البطاقة يعرض حجوزاته، و«فتح الملف الكامل» يعرض كل تاريخه.</p>
+      <figure data-shot="clients" data-class="mid"></figure>
+      <ol class="legend one">
+        <li><span class="ui">إضافة عميل</span>: الاسم، الهاتف، والعنوان. إذا كان الرقم مسجلًا من قبل ينبهك النظام.</li>
+      </ol>
+      <div class="tip"><i>ملف العميل</i><span>في الملف الكامل: عدة عناوين (البيت، المكتب)، ملاحظات (رمز الباب، منتجات بلا رائحة)، العامل المفضل، الفواتير والدفعات والشكاوى.</span></div>
+    </div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-sales">
+  <div class="run"><b>الفصل 3: باقي الأقسام</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <h2>العملاء المحتملون وعروض الأسعار</h2>
+    <p class="lead">تابع كل شخص سأل عن خدماتك حتى يصبح عميلًا: من أين جاء، ماذا يريد، وكم قيمته المتوقعة.</p>
+    <figure data-shot="sales"></figure>
+    <ol class="legend">
+      <li><span class="ui">العملاء المحتملون</span>: أعمدة المراحل: جديد، تم التواصل، تم إرسال عرض، تم الفوز، خسارة.</li>
+      <li><span class="ui">عروض الأسعار</span>: عرض بخدماتك وأسعارك، ثم «قبول وحجز» يحوله إلى حجز وعميل.</li>
+      <li><span class="ui">العروض الترويجية</span>: أكواد خصم بنسبة أو مبلغ، بعدد استخدامات وتاريخ انتهاء.</li>
+      <li><span class="ui">إضافة عميل محتمل</span>.</li>
+    </ol>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-subs">
+  <div class="run"><b>الفصل 3: باقي الأقسام</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <h2>العقود والاشتراكات</h2>
+    <p class="lead">للعملاء الدائمين: تنظيف أسبوعي أو كل أسبوعين أو شهري أو عاملة مقيمة. لكل اشتراك عقد يُطبع ويوقَّع، ودفعات شهرية تتابعها.</p>
+    <figure data-shot="subscriptions"></figure>
+    <ol class="legend">
+      <li><span class="ui">اشتراك جديد</span>: العميل، الخدمة، التكرار، السعر لكل زيارة، البداية والنهاية، العامل.</li>
+      <li><span class="ui">الدفعات</span>: كل دفعة شهرية وحالتها، و«تعليم كمدفوع».</li>
+      <li><span class="ui">القوالب</span>: نصوص العقود الجاهزة الخاصة بشركتك.</li>
+      <li><b>الاشتراكات</b>: اضغط أي سطر لفتح تفاصيله وعقده.</li>
+    </ol>
+    <div class="note"><i>دورة العقد</i><span><span class="ui">إنشاء عقد</span> ← تعديل النص وعدد الأشهر ← <span class="ui">تعليم كموقّع</span> ← تبدأ الدفعات الشهرية تلقائيًا من تاريخ التوقيع.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-teamhub">
+  <div class="run"><b>الفصل 3: باقي الأقسام</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <h2>مركز الفريق: الحضور والإجازات</h2>
+    <p class="lead">كل ما يخص فريقك في صفحة واحدة: الحضور اليومي، المستندات، الإجازات، الرواتب، والأداء.</p>
+    <figure data-shot="team-hub"></figure>
+    <ol class="legend">
+      <li><span class="ui">الحضور</span>: حاضر، متأخر، غائب، في إجازة، مع وقت الدخول والخروج.</li>
+      <li><span class="ui">إجازة</span>: <span class="ui">إضافة إجازة</span> ثم الموافقة. الإجازة المعتمدة تمنع الحجز للعامل في أيامها.</li>
+      <li><span class="ui">الرواتب</span>: الصفحة التالية.</li>
+      <li><span class="ui">سجّل الحضور الآن</span>: بضغطة واحدة لكل موظف.</li>
+    </ol>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-payroll">
+  <div class="run"><b>الفصل 3: باقي الأقسام</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <h2>الرواتب</h2>
+    <p class="lead">حدد شروط الأجر لكل موظف مرة واحدة، ثم أنشئ كشف الرواتب كل شهر بضغطة: الراتب الأساسي + العمولة + العمل الإضافي − الخصومات.</p>
+    <figure data-shot="payroll"></figure>
+    <ol class="legend">
+      <li><span class="ui">إنشاء كشف الرواتب</span> للشهر الحالي.</li>
+      <li><span class="ui">تعليم كمدفوع</span>: يسجل الراتب تلقائيًا في <span class="ui">المصروفات</span>.</li>
+      <li><span class="ui">شروط الأجر</span>: الراتب، نسبة العمولة على المهام المكتملة، وأجر ساعة العمل الإضافي.</li>
+    </ol>
+    <div class="tip"><i>قسيمة الراتب</i><span>زر <span class="ui">قسيمة الراتب</span> بجانب كل موظف يطبع قسيمته لتسليمها له.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-expenses">
+  <div class="run"><b>الفصل 3: باقي الأقسام</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <h2>المصروفات</h2>
+    <p class="lead">سجّل كل ما تصرفه الشركة: الإيجار، الوقود، المواد، صيانة المركبات، التأشيرات، التسويق. صافي الربح في نظرة عامة يُحسب منها.</p>
+    <figure data-shot="expenses"></figure>
+    <ol class="legend">
+      <li><span class="ui">إضافة مصروف</span>: التاريخ، الفئة، الوصف، المبلغ، والجهة.</li>
+      <li><span class="ui">حسب الفئة</span>: أين تذهب أموالك هذا الشهر.</li>
+    </ol>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-reports">
+  <div class="run"><b>الفصل 3: باقي الأقسام</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <h2>التقارير والتحليلات</h2>
+    <p class="lead">كل الأرقام من سجلاتك الفعلية: الإيرادات، الأرباح، إنتاجية العمال، استبقاء العملاء، والإلغاءات. وكل جدول يُصدَّر لمحاسبك.</p>
+    <figure data-shot="reports"></figure>
+    <ol class="legend">
+      <li><b>التبويبات</b>: الإيرادات، الربح، إنتاجية عمال النظافة، استبقاء العملاء، الإلغاءات.</li>
+      <li><span class="ui">تصدير CSV</span>: ملف يفتح في Excel.</li>
+    </ol>
+    <div class="tip"><i>التحليلات</i><span>صفحة <span class="ui">التحليلات</span> تقارن الفترة بما قبلها، وتبين أكثر الأوقات ازدحامًا وأفضل الخدمات والعملاء.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="s-activity">
+  <div class="run"><b>الفصل 3: باقي الأقسام</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <h2>سجل النشاط</h2>
+    <p class="lead">من فعل ماذا ومتى: الفواتير، الدفعات، التعيينات، الرواتب، العقود وغيرها. مفيد لمعرفة ما حدث عندما تكون غائبًا.</p>
+    <figure data-shot="activity"></figure>
+    <ol class="legend one">
+      <li><span class="ui">تصدير CSV</span> للاحتفاظ بنسخة.</li>
+    </ol>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<!-- =============================== CHAPTER 4 =============================== -->
+<section class="page" id="ch4">
+  <div class="run"><b>الفصل 4: الروتين والنصائح</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <div class="band"><span class="num">4</span><div><h2>الروتين: يومي، أسبوعي، شهري</h2><p>قوائم قصيرة لفريقك. اطبعها وضعها بجانب الكمبيوتر.</p></div></div>
+    <div id="routine" class="cols2">
+      <div class="card"><h3>كل صباح</h3><ul>
+        <li><span class="box-check"></span> افتح <b>نظرة عامة</b> ← <b>يحتاج انتباهك</b>.</li>
+        <li><span class="box-check"></span> رد على كل <b>طلبات الحجز</b>.</li>
+        <li><span class="box-check"></span> <b>لوحة التوزيع</b>: لا مهمة بلا عامل.</li>
+        <li><span class="box-check"></span> <b>السائقون</b>: تعيين الكل لليوم.</li>
+        <li><span class="box-check"></span> <b>مركز الفريق</b>: سجّل الحضور.</li>
+      </ul></div>
+      <div class="card"><h3>كل مساء</h3><ul>
+        <li><span class="box-check"></span> كل مهام اليوم «اكتمل» أو «ملغى».</li>
+        <li><span class="box-check"></span> أرسل الفواتير وسجل الدفعات النقدية.</li>
+        <li><span class="box-check"></span> أرسل طلبات التقييم لمهام اليوم.</li>
+        <li><span class="box-check"></span> جهّز لوحة التوزيع والسائقين للغد.</li>
+      </ul></div>
+      <div class="card"><h3>كل أسبوع</h3><ul>
+        <li><span class="box-check"></span> وافق على التقييمات الجديدة وانشرها.</li>
+        <li><span class="box-check"></span> أغلق الشكاوى المفتوحة.</li>
+        <li><span class="box-check"></span> تابع العملاء المحتملين وعروض الأسعار.</li>
+        <li><span class="box-check"></span> راجع المستلزمات وما يحتاج إلى طلب.</li>
+        <li><span class="box-check"></span> الفواتير المتأخرة: ذكّر العملاء.</li>
+      </ul></div>
+      <div class="card"><h3>كل شهر</h3><ul>
+        <li><span class="box-check"></span> <b>الرواتب</b>: إنشاء الكشف وتعليمه مدفوعًا.</li>
+        <li><span class="box-check"></span> سجّل الإيجار وباقي <b>المصروفات</b>.</li>
+        <li><span class="box-check"></span> <b>العقود</b>: سجل الدفعات الشهرية.</li>
+        <li><span class="box-check"></span> المستندات التي تنتهي خلال 30 يومًا.</li>
+        <li><span class="box-check"></span> صدّر <b>التقارير</b> لمحاسبك.</li>
+      </ul></div>
+    </div>
+    <div class="tip"><i>نصيحة</i><span>وزّع القوائم على فريقك: المنسق للصباح والمساء، المحاسب للأسبوعي والشهري، وأنت تراجع <b>نظرة عامة</b> و<b>التقارير</b>.</span></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<section class="page" id="faq">
+  <div class="run"><b>الفصل 4: الروتين والنصائح</b><span class="en">CleanBase Blueprint V1</span></div>
+  <div class="body">
+    <span class="kicker">أسئلة شائعة</span>
+    <h2>أسئلة شائعة وحلول سريعة</h2>
+    <div class="card"><h3>كيف أغيّر لغة لوحة التحكم؟</h3><p>زر <span class="ui">English</span> / <span class="ui">العربية</span> بجانب الجرس أعلى الشاشة. كل مستخدم يختار لغته، والاختيار يُحفظ على جهازه.</p></div>
+    <div class="card"><h3>ظهرت رسالة حمراء أسفل الشاشة عند الحفظ</h3><p>معناها أن التغيير لم يُحفظ (انقطاع الإنترنت أو صلاحية غير كافية). اقرأ الرسالة، تحقق من الاتصال، ثم أعد المحاولة. عند انقطاع الإنترنت يحفظ النظام التغييرات ويرسلها عند عودة الاتصال.</p></div>
+    <div class="card"><h3>حسابي ما زال «قيد المراجعة»</h3><p>فريق CleanBase يراجع كل شركة جديدة. اضغط «تواصل مع فريقنا على واتساب» في نفس الشاشة لتسريع ذلك.</p></div>
+    <div class="card"><h3>السائق نسي كلمة المرور</h3><p><span class="ui">الإعدادات</span> ← <span class="ui">السائقون</span> ← <span class="ui">تعيين كلمة المرور</span> بجانب اسمه، ثم أبلغه بها (مثلًا على واتساب).</p></div>
+    <div class="card"><h3>موظف جديد لا يستطيع الدخول</h3><p>تأكد أنك أضفته في <span class="ui">أعضاء الفريق</span> بنفس البريد الذي يسجل به، وأنه اختار <span class="en">My company invited me to join</span> عند التسجيل.</p></div>
+    <div class="card"><h3>العميل لا يجد أوقاتًا في موقع الحجز</h3><p>تحقق من <span class="ui">ساعات العمل</span>، ومن أن الخدمة ظاهرة في المتجر، وأن لديك عمال نظافة غير محجوزين في ذلك اليوم.</p></div>
+    <div class="card"><h3>كيف أطبع عقدًا أو فاتورة؟</h3><p>افتح العقد أو الفاتورة واضغط <span class="ui">طباعة</span>. يمكنك الطباعة على ورق أو الحفظ كملف PDF.</p></div>
+  </div>
+  <div class="foot"><span>CleanBase Blueprint V1 · by XTECH</span><span class="pno"></span></div>
+</section>
+
+<!-- =============================== BACK =============================== -->
+<section class="page back" id="back">
+  <div class="in">
+    <img src="../../../public/xtech.png" alt="XTECH">
+    <h2>نحن هنا لمساعدتك</h2>
+    <p>أي سؤال عن CleanBase أو طلب تدريب لفريقك، تواصل مع فريق XTECH.</p>
+    <div class="contact">
+      <div>واتساب / هاتف<b>+974 72262228</b></div>
+      <div>الموقع<b>xtechnology.group</b></div>
+    </div>
+    <p style="margin-top:10mm;font-size:9pt;color:rgba(255,255,255,.55)" class="en">CleanBase Blueprint V1 · by XTECH · © 2026 XTechnology Group</p>
+  </div>
+</section>
+
+</body>
+</html>

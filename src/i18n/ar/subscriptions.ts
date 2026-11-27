@@ -110,6 +110,8 @@ const dict: Dict = {
     'Cancelled a subscription': 'تم إلغاء اشتراك', 'Reactivated a subscription': 'تمت إعادة تفعيل اشتراك', 'Deleted a subscription': 'تم حذف اشتراك',
     'Updated unpaid months to the current price': 'تم تحديث الأشهر غير المدفوعة إلى السعر الحالي',
 
+    'per visit': 'للزيارة', '{} QAR per visit': m => `${m[1]} ر.ق للزيارة`,
+
     /* business rule: keeping a cleaner for a client */
     'Monthly and live-in plans': 'الخطط الشهرية وخطط الإقامة',
     'A cleaner on a monthly or live-in plan is kept for that client during the plan. Weekly plans only block the times of their visits.': 'يُحجز عامل النظافة في الخطة الشهرية أو خطة الإقامة لذلك العميل طوال مدة الخطة. أما الخطط الأسبوعية فتحجز أوقات زياراتها فقط.',

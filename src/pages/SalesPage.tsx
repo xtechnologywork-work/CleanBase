@@ -94,7 +94,7 @@ const LeadsTab: React.FC<{ companyId: string }> = ({ companyId }) => {
             </div>
             <Panel title="Where leads come from" subtitle="Conversion by source">
                 {bySource.length === 0 ? <Empty>No leads yet.</Empty> : bySource.map(([s, v]) => (
-                    <div className="row" key={s}><span>{s}</span><span className="muted">{v.n} leads · {v.won} won · {Math.round((v.won / v.n) * 100)}%</span></div>
+                    <div className="row" key={s}><span>{s}</span><span className="muted">{v.n} {v.n === 1 ? 'lead' : 'leads'} · {v.won} won · {Math.round((v.won / v.n) * 100)}%</span></div>
                 ))}
             </Panel>
             <FormModal open={editing !== null} title={editing === 'new' ? 'Add lead' : 'Edit lead'} fields={LEAD_FIELDS}

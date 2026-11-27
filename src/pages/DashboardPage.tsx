@@ -222,7 +222,7 @@ export const DashboardPage: React.FC = () => {
                         {data.services.length === 0 ? <Empty>No completed jobs in this period.</Empty> : data.services.map(s => (
                             <div key={s.name} style={{ marginBottom: 12 }}>
                                 <div className="row" style={{ padding: 0, border: 0, marginBottom: 4 }}>
-                                    <span>{s.name}</span><span className="muted">{fmt0(s.revenue)} QAR · {s.jobs} jobs</span>
+                                    <span>{s.name}</span><span className="muted">{fmt0(s.revenue)} QAR · {s.jobs} {s.jobs === 1 ? 'job' : 'jobs'}</span>
                                 </div>
                                 <div className="bar"><i style={{ width: `${(s.revenue / data.services[0].revenue) * 100}%` }} /></div>
                             </div>
@@ -230,7 +230,7 @@ export const DashboardPage: React.FC = () => {
                     </Panel>
                     <Panel title="Top cleaners" subtitle="By revenue in the period">
                         {data.cleaners.length === 0 ? <Empty>No completed jobs in this period.</Empty> : data.cleaners.map(c => (
-                            <div className="row" key={c.name}><span>{c.name}</span><span className="muted">{fmt0(c.revenue)} QAR · {c.jobs} jobs</span></div>
+                            <div className="row" key={c.name}><span>{c.name}</span><span className="muted">{fmt0(c.revenue)} QAR · {c.jobs} {c.jobs === 1 ? 'job' : 'jobs'}</span></div>
                         ))}
                     </Panel>
                 </div>

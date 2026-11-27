@@ -102,7 +102,7 @@ export const BrandingPanel: React.FC<Props> = ({ company, setCompany, onSave, sa
                             </div>
                         </div>
                         <div>
-                            <label style={lbl}>Soft colour (header, backgrounds)</label>
+                            <label style={lbl}>Second colour (a dark one paints the header)</label>
                             <div style={{ display: 'flex', gap: 8 }}>
                                 <input type="color" value={accent} onChange={e => setAccent(e.target.value)} aria-label="Soft colour" style={{ width: 42, height: 40, padding: 2, border: '1px solid var(--color-border)', borderRadius: 8, background: '#fff', cursor: 'pointer' }} />
                                 <input className="input-field" value={accentText} onChange={e => setAccent(e.target.value)} onBlur={() => setAccentText(accent)} maxLength={7} spellCheck={false} style={{ fontFamily: 'monospace' }} />
@@ -127,14 +127,14 @@ export const BrandingPanel: React.FC<Props> = ({ company, setCompany, onSave, sa
                 <div>
                     <label style={lbl}>Preview</label>
                     <div style={{ ...(vars as React.CSSProperties), border: '1px solid var(--color-border)', borderRadius: 16, overflow: 'hidden', background: '#f5f5f7', maxWidth: 360 }}>
-                        <div style={{ background: 'var(--brand-soft)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '3px solid var(--brand)' }}>
-                            <div style={{ width: 42, height: 42, borderRadius: 10, background: '#fff', display: 'grid', placeItems: 'center', overflow: 'hidden', flex: 'none' }}>
+                        <div style={{ background: 'linear-gradient(135deg, var(--brand-hero) 20%, var(--brand-hero-2))', padding: '18px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{ width: 42, height: 42, borderRadius: 10, background: company.logo ? 'transparent' : 'rgba(255,255,255,.14)', display: 'grid', placeItems: 'center', overflow: 'hidden', flex: 'none' }}>
                                 {company.logo ? <img src={company.logo} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                                    : <b style={{ color: 'var(--brand)' }}>{company.name.charAt(0).toUpperCase()}</b>}
+                                    : <b style={{ color: '#fff' }}>{company.name.charAt(0).toUpperCase()}</b>}
                             </div>
                             <div style={{ minWidth: 0 }}>
-                                <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--brand-soft-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{company.name}</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--brand-soft-ink)', opacity: .75 }}>{company.tagline || 'Book a cleaning online'}</div>
+                                <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{company.name}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,.78)' }}>{company.tagline || 'Book a cleaning online'}</div>
                             </div>
                         </div>
                         <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>

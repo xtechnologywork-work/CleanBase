@@ -84,7 +84,7 @@ export const DriverBoardPage: React.FC = () => {
             </div>
 
             <div className="kpis">
-                <Kpi label="Rides" value={trips.length} hint={`${bookings.length} bookings this day`} />
+                <Kpi label="Rides" value={trips.length} hint={`${bookings.length} booking${bookings.length === 1 ? '' : 's'} this day`} />
                 <Kpi label="On the road now" value={onRoad.length} icon={<Car size={16} />} />
                 <Kpi label="Late" value={late.length} tone={late.length ? 'bad' : undefined} hint={late.length ? 'See the red rides below' : 'Everything on time'} />
                 <Kpi label="Back home" value={done.length} tone={done.length && done.length === trips.length ? 'good' : undefined} />

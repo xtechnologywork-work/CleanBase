@@ -62,7 +62,7 @@ export const DispatchPage: React.FC = () => {
             </div>
 
             <div className="grid3">
-                <Panel title="Unassigned" subtitle={`${unassigned.length} jobs waiting`}>
+                <Panel title="Unassigned" subtitle={`${unassigned.length} job${unassigned.length === 1 ? '' : 's'} waiting`}>
                     <div className="stack" style={{ gap: 8 }}>
                         {unassigned.length === 0 ? <Empty>Everything is assigned.</Empty> : unassigned.map(chip)}
                     </div>
@@ -71,7 +71,7 @@ export const DispatchPage: React.FC = () => {
                     const mine = jobs.filter(j => j.cleanerId === c.id && j.status !== 'cancelled');
                     const minutes = mine.reduce((s, j) => s + dur(j), 0);
                     return (
-                        <Panel key={c.id} title={staffName(db, c.id)} subtitle={`${mine.length} jobs · ${(minutes / 60).toFixed(1)} hours booked`}>
+                        <Panel key={c.id} title={staffName(db, c.id)} subtitle={`${mine.length} job${mine.length === 1 ? '' : 's'} · ${(minutes / 60).toFixed(1)} hours booked`}>
                             <div className="stack" style={{ gap: 8 }}>
                                 {mine.length === 0 ? <Empty>Free all day.</Empty> : mine.map(chip)}
                                 <div className="bar" title="Share of an 8 hour day"><i style={{ width: `${Math.min(100, (minutes / 480) * 100)}%`, background: minutes > 480 ? 'var(--color-danger)' : undefined }} /></div>

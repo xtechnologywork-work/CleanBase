@@ -46,7 +46,7 @@ const dict: Dict = {
     'team members have no accommodation yet. Set it in Cleaners, Edit.': 'من أعضاء الفريق بلا سكن بعد. حدده من «عمال النظافة» ثم «تعديل».',
     'Fleet': 'الأسطول', 'Add vehicle': 'إضافة مركبة', 'Plate': 'اللوحة', 'Insurance': 'التأمين', 'Maintenance': 'الصيانة', 'Inventory': 'المخزون', 'Restock': 'إعادة التخزين',
     'Level': 'المستوى', 'Out of stock': 'نفد المخزون', 'Low': 'منخفض', 'Unit cost': 'تكلفة الوحدة', 'Used (30 days)': 'المستخدم (30 يومًا)',
-    '{n} jobs outside any zone': m => `${jobs(m[1])} خارج أي منطقة`, '{n} in maintenance': m => `${m[1]} في الصيانة`, '{n} items tracked': m => `${items(m[1])} قيد التتبع`,
+    '{n} jobs outside any zone': m => `${jobs(m[1])} خارج أي منطقة`, '{n} job outside any zone': m => `${jobs(m[1])} خارج أي منطقة`, '{n} in maintenance': m => `${m[1]} في الصيانة`, '{n} items tracked': m => `${items(m[1])} قيد التتبع`,
     'Restock {}: how many {}s arrived?': m => `إعادة تخزين ${m[1]}: كم عدد الوحدات (${m[2]}) التي وصلت؟`,
 
     /* settings */

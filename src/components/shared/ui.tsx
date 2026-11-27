@@ -88,7 +88,7 @@ export const Modal: React.FC<{
             <div className="sheet-col" style={{ maxWidth: Math.max(width, 720) }}>
                 <div className="sheet-head">
                     <h1>{title}</h1>
-                    <button className="sheet-x" onClick={() => closeRef.current()} aria-label="Close"><X size={18} /></button>
+                    <button type="button" className="sheet-x" onClick={() => closeRef.current()} aria-label="Close"><X size={18} /></button>
                 </div>
                 <div className="sheet-body">{children}</div>
                 {footer && <div className="sheet-foot">{footer}</div>}

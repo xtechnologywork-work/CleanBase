@@ -49,16 +49,35 @@ export const mix = (a: string, b: string, t: number) => { const x = rgb(a), y = 
 /** True when the brand colour is too light to be seen on a white page (buttons would vanish). */
 export const tooLight = (primary: string) => contrast(primary, '#ffffff') < 2;
 
-/** CSS variables for the booking page. Anything invalid falls back to the default look. */
+/** Darken a colour step by step until it reads against `against` at this contrast ratio. */
+export function darkenUntil(hex: string, ratio: number, against = '#ffffff'): string {
+    let c = hex;
+    for (let i = 0; i < 20 && contrast(c, against) < ratio; i++) c = mix(c, '#000000', 0.12);
+    return c;
+}
+
+/**
+ * CSS variables for the public pages. Anything invalid falls back to the default look, and every pair that carries text
+ * stays readable whatever colours the company picked:
+ *  - the header (--brand-hero to --brand-hero-2) is always dark, with white text. A dark "soft colour" chosen by the company is used for it;
+ *  - the soft surfaces (--brand-soft) are always light, with dark text;
+ *  - --brand-text is the brand colour made dark enough to be read on white.
+ */
 export function brandVars(b?: { primary?: string; accent?: string }): Record<string, string> {
     const primary = b?.primary && isHex(b.primary) ? b.primary.toLowerCase() : DEFAULT_PRIMARY;
     const accent = b?.accent && isHex(b.accent) ? b.accent.toLowerCase() : mix(primary, '#ffffff', 0.9);
+    const darkAccent = luminance(accent) < 0.18;
+    const soft = luminance(accent) < 0.6 ? mix(primary, '#ffffff', 0.9) : accent;
+    const hero = darkAccent ? darkenUntil(accent, 9) : darkenUntil(mix(primary, '#0a0f1c', 0.55), 9);
     return {
         '--brand': primary,
         '--brand-ink': inkOn(primary),
         '--brand-hover': mix(primary, '#000000', 0.14),
-        '--brand-soft': accent,
-        '--brand-soft-ink': inkOn(accent) === '#ffffff' ? '#ffffff' : mix(primary, '#000000', 0.35),
+        '--brand-soft': soft,
+        '--brand-soft-ink': darkenUntil(mix(primary, '#000000', 0.35), 7, soft),
+        '--brand-text': darkenUntil(primary, 4.6),
+        '--brand-hero': hero,
+        '--brand-hero-2': darkenUntil(mix(hero, primary, 0.45), 5.5),
         '--brand-ring': `${primary}33`,
     };
 }

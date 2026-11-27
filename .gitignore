@@ -37,3 +37,6 @@ Thumbs.db
 .taste-skill/
 _old-design-assets/
 make_transparent.cjs
+
+# Blueprint build files (screenshots, page previews, and a copy of local test data)
+docs/blueprint/work/

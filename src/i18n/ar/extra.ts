@@ -35,6 +35,35 @@ const dict: Dict = {
     'Expiring in 30 days': 'تنتهي خلال 30 يومًا', 'Payroll this month': 'رواتب هذا الشهر', 'Overtime / hour': 'العمل الإضافي / الساعة', 'Performance, last 30 days': 'الأداء، آخر 30 يومًا',
     'Stock drops automatically when a cleaner logs supplies on a job': 'ينخفض المخزون تلقائيًا عندما يسجل عامل النظافة المستلزمات المستخدمة في مهمة', 'Add item': 'إضافة صنف',
     'Standard Operating Hours': 'ساعات العمل المعتادة', 'Driver board': 'لوحة السائقين', 'Driver app (phone)': 'تطبيق السائق (الهاتف)',
+
+    /* booking store insights */
+    'Where visitors stop': 'أين يتوقف الزوار', 'Day by day': 'يومًا بيوم', 'Opened the store': 'فتح المتجر', 'Chose a service': 'اختار خدمة',
+    'Chose a cleaner': 'اختار عامل نظافة', 'Picked a time': 'اختار وقتًا', 'Filled in their details': 'أدخل بياناته', 'Sent a request': 'أرسل طلبًا',
+    '{n} · {n}%': m => `${m[1]} · ${ltr(m[2] + '%')}`, '{n} · {n}% · {n} left here': m => `${m[1]} · ${ltr(m[2] + '%')} · ${m[3]} توقفوا هنا`, 'Requests': 'الطلبات',
+
+    /* cleaners, clients, documents */
+    '{} rating': m => `تقييم ${m[1]}`, '{n} lifetime jobs': m => `${jobs(m[1])} منذ البداية`, '{n} lifetime job': () => 'مهمة واحدة منذ البداية',
+    '{n} recurring contracts': m => `${cnt(m[1], 'عقد متكرر واحد', 'عقدان متكرران', 'عقود متكررة', 'عقدًا متكررًا')}`, '{n} recurring contract': () => 'عقد متكرر واحد', 'recurring contracts': 'عقود متكررة',
+    '{n} active': m => `${m[1]} نشط`, 'Documents ({}) · expiring soon': m => `المستندات (${m[1]}) · تنتهي قريبًا`, 'Documents ({}) · expired': m => `المستندات (${m[1]}) · منتهية`,
+    'Expires {}': m => `تنتهي في ${m[1]}`, 'Expired {}': m => `انتهت في ${m[1]}`, 'Item': 'الصنف',
+    '{n} of {n} displayed': m => `${m[1]} من ${m[2]} معروضة`, 'Joined {}': m => `انضم في ${m[1]}`, '{n} Active Plan': m => `${m[1]} خطة نشطة`,
+    'weekly': 'أسبوعي', 'bi-weekly': 'كل أسبوعين', 'monthly': 'شهري', 'live-in': 'إقامة كاملة',
+    'Dashboard Accounts & Team': 'حسابات لوحة التحكم والفريق', 'Discount (QAR)': 'الخصم (ر.ق)', 'Amount (QAR)': 'المبلغ (ر.ق)',
+
+    /* raw states shown as they are stored */
+    'new': 'جديد', 'contacted': 'تم التواصل', 'quoted': 'تم إرسال عرض', 'won': 'تم الفوز', 'lost': 'خسارة',
+    'paid': 'مدفوع', 'unpaid': 'غير مدفوع', 'paused': 'متوقف مؤقتًا', 'cancelled': 'ملغى', 'ended': 'منتهٍ',
+
+    /* driver board */
+    '{} to {} · {}': m => `${m[1]} إلى ${m[2]} · ${m[3]}`,
+    '{} · leave {}, collect {}': m => `${m[1]} · الانطلاق ${m[2]}، الاستلام ${m[3]}`,
+
+    /* activity log (the first letter is written in lower case there) */
+    'logged complaint': 'سجّل شكوى', 'updated complaint': 'حدّث شكوى', 'resolved complaint': 'حلّ شكوى',
+    'approved leave request': 'وافق على طلب إجازة', 'rejected leave request': 'رفض طلب إجازة',
+    'paid salary {} QAR': m => `دفع راتبًا بقيمة ${m[1]} ر.ق`, 'recorded payment of {} QAR': m => `سجّل دفعة بقيمة ${m[1]} ر.ق`, 'refunded {} QAR': m => `ردّ مبلغ ${m[1]} ر.ق`,
+    '· {n} staff': m => `· ${m[1]} موظفين`,
+    '{n} / {n} paid': m => `${m[1]} / ${m[2]} مدفوعة`, '{n} late': m => `${m[1]} متأخرة`, 'Paid {}': m => `دُفعت ${m[1]}`,
 };
 
 export default dict;

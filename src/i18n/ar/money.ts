@@ -6,7 +6,7 @@ const dict: Dict = {
     /* invoices */
     'Bill clients, record what they pay, and see who still owes you.': 'فوتِر العملاء وسجّل ما يدفعونه وتعرّف على من لا يزال مدينًا لك.',
     'New invoice': 'فاتورة جديدة', 'Open balance': 'الرصيد المفتوح', 'Invoices issued': 'الفواتير الصادرة', 'Payments ledger': 'سجل المدفوعات',
-    '{n} unpaid invoices': m => `${invoices(m[1])} غير مدفوعة`, '{n} invoices past due': m => `${invoices(m[1])} متأخرة`, '{n} fully paid': m => `${m[1]} مدفوعة بالكامل`,
+    '{n} unpaid invoices': m => `${invoices(m[1])} غير مدفوعة`, '{n} unpaid invoice': m => `${invoices(m[1])} غير مدفوعة`, '{n} invoice past due': m => `${invoices(m[1])} متأخرة`, '{n} invoices past due': m => `${invoices(m[1])} متأخرة`, '{n} fully paid': m => `${m[1]} مدفوعة بالكامل`,
     'Search client or number': 'ابحث بالعميل أو الرقم', 'No invoices yet. Create one from completed jobs.': 'لا توجد فواتير بعد. أنشئ واحدة من المهام المكتملة.',
     'Unknown': 'غير معروف', 'Balance': 'الرصيد', 'Marked invoice as sent': 'تم تعليم فاتورة كمُرسلة', 'Cancel this invoice?': 'هل تريد إلغاء هذه الفاتورة؟',
     'Cancelled invoice': 'تم إلغاء فاتورة', 'Cancel invoice': 'إلغاء الفاتورة', 'Invoice {id}': m => `فاتورة ${m[1]}`,

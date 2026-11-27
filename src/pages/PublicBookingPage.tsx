@@ -188,9 +188,16 @@ export const PublicBookingPage: React.FC = () => {
     ) : null;
     const sep = rtl ? '، ' : ', ';
 
+    // Facts the client wants before choosing, shown in the header
+    const todayHours = data ? dayHours(data.rules, now.date) : null;
+    const chips = data && step !== 'done' ? [
+        { icon: <Clock size={15} />, text: todayHours ? t.openToday(todayHours.start, todayHours.end) : t.closedToday },
+        { icon: <Wallet size={15} />, text: t.nothingToPay },
+    ] : undefined;
+
     const header = (
         <StoreHeader name={data?.company.name || t.bookingFallback} logo={data?.company.logo} tagline={data?.company.tagline || t.tagline}
-            langButton={t.langButton} langOf={rtl ? 'en' : 'ar'} onLang={switchLang} />
+            langButton={t.langButton} langOf={rtl ? 'en' : 'ar'} onLang={switchLang} chips={chips} />
     );
     const footer = <footer className="st-foot">{t.footer}</footer>;
     const shell = { className: 'st', style: brand, dir: rtl ? 'rtl' : 'ltr', lang } as const;
@@ -224,7 +231,7 @@ export const PublicBookingPage: React.FC = () => {
                             </div>
                         </div>
                     )}
-                    <div><button className="st-btn" onClick={() => { setStep('service'); setServiceId(''); setCleanerId(''); setDate(''); setTime(''); setForm({ name: '', phone: '', address: '', notes: '', website: '' }); void load(); }}>{t.bookAnother}</button></div>
+                    <div style={{ display: 'flex', justifyContent: 'center' }}><button className="st-btn" onClick={() => { setStep('service'); setServiceId(''); setCleanerId(''); setDate(''); setTime(''); setForm({ name: '', phone: '', address: '', notes: '', website: '' }); void load(); }}>{t.bookAnother}</button></div>
                 </main>
                 {footer}
             </div>
@@ -235,26 +242,16 @@ export const PublicBookingPage: React.FC = () => {
     const reached = (s: Step) => order.indexOf(s) < order.indexOf(step);
     const minMonth = now.date.slice(0, 7), maxMonth = lastDay.slice(0, 7);
 
-    // The booking so far, beside the steps on wide screens and under them on a phone (hidden there until something is chosen)
-    const side = step !== 'details';
-    const todayHours = dayHours(data.rules, now.date);
-    const aside = side ? (
-        <aside className="st-side">
-            <p className="st-note"><Clock size={16} /> {todayHours ? t.openToday(todayHours.start, todayHours.end) : t.closedToday}</p>
-            <p className="st-note"><Wallet size={16} /> {t.nothingToPay}</p>
-        </aside>
-    ) : null;
-
     return (
         <div {...shell}>
             {header}
-            <main className={`st-main ${side ? 'st-has-side' : ''}`}>
+            <main className="st-main">
                 <div className="st-flow">
                 <nav className="st-steps" aria-label={t.stepsLabel}>
-                    {STEP_IDS.map(id => (
+                    {STEP_IDS.map((id, i) => (
                         <button key={id} type="button" className={`st-step ${step === id ? 'on' : reached(id) ? 'done' : ''}`}
                             disabled={!reached(id)} aria-current={step === id ? 'step' : undefined} onClick={() => setStep(id)}>
-                            <span className="st-step-bar" />
+                            <span className="st-step-dot" aria-hidden="true">{reached(id) ? <Check size={17} strokeWidth={3} /> : i + 1}</span>
                             <span className="st-step-label">{t.steps[id]}</span>
                         </button>
                     ))}
@@ -392,7 +389,6 @@ export const PublicBookingPage: React.FC = () => {
                     </>
                 )}
                 </div>
-                {aside}
             </main>
             {footer}
         </div>

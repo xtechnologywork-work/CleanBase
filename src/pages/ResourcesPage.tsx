@@ -56,7 +56,7 @@ export const ResourcesPage: React.FC = () => {
         <div className="pg">
             <PageHeader title="Zones, vehicles and supplies" subtitle="The things your crews need to get to a job and do it." />
             <div className="kpis">
-                <Kpi label="Zones" value={zones.length} hint={unzoned ? `${unzoned} jobs outside any zone` : 'All jobs are in a zone'} />
+                <Kpi label="Zones" value={zones.length} hint={unzoned ? `${unzoned} job${unzoned === 1 ? '' : 's'} outside any zone` : 'All jobs are in a zone'} />
                 <Kpi label="Active vehicles" value={vehicles.filter(v => v.status === 'active').length} hint={`${vehicles.filter(v => v.status === 'maintenance').length} in maintenance`} />
                 <Kpi label="Low stock items" value={low.length} tone={low.length ? 'warn' : undefined} hint={`${supplies.length} items tracked`} />
                 <Kpi label="Stock value" value={fmt0(supplies.reduce((s, x) => s + x.stock * x.costPerUnit, 0))} unit="QAR" />

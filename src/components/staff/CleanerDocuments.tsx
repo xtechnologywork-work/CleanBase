@@ -36,7 +36,7 @@ export const CleanerDocuments: React.FC<{ staffId: string; name: string; company
 
     const add = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!file) { setError('Add the file first: a photo or a PDF of the document.'); return; }
+        if (!file) { setError(current => current || 'Add the file first: a photo or a PDF of the document.'); return; }
         if (!form.expiry) { setError('Choose the expiry date.'); return; }
         addItem('staffDocs', companyId, { staffId, type: form.type, number: form.number.trim(), expiry: form.expiry, photo: file });
         logActivity(companyId, actor, 'Added a staff document', `${name}: ${form.type}`);

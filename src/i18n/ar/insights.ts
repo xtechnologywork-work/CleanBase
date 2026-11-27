@@ -8,7 +8,7 @@ const dict: Dict = {
     'Open booking page': 'فتح صفحة الحجز', 'Logo': 'الشعار', 'Replace': 'استبدال', 'Upload logo': 'رفع الشعار',
     'PNG, JPG or WebP. Drag a file here too. A square logo with a clear background works best.': 'PNG أو JPG أو WebP. يمكنك أيضًا سحب ملف إلى هنا. الشعار المربع بخلفية واضحة هو الأفضل.',
     'Ready-made palettes': 'ألوان جاهزة', 'Main colour (buttons, highlights)': 'اللون الرئيسي (الأزرار والتمييز)', 'Main colour': 'اللون الرئيسي',
-    'Soft colour (header, backgrounds)': 'اللون الفاتح (الترويسة والخلفيات)', 'Soft colour': 'اللون الفاتح', 'Automatic from the main colour': 'تلقائي من اللون الرئيسي',
+    'Second colour (a dark one paints the header)': 'اللون الثاني (إذا كان داكنًا يلوّن الترويسة)', 'Soft colour': 'اللون الفاتح', 'Automatic from the main colour': 'تلقائي من اللون الرئيسي',
     'This main colour is very light. Buttons may be hard to see on a white page. A darker colour reads better.': 'هذا اللون الرئيسي فاتح جدًا. قد يصعب رؤية الأزرار على صفحة بيضاء. اللون الأغمق أوضح.',
     'Tagline (optional)': 'الشعار النصي (اختياري)', 'Book a cleaning online': 'احجز خدمة تنظيف عبر الإنترنت', 'Home cleaning, 5h': 'تنظيف منزلي، 5 ساعات', 'Continue': 'متابعة',
     'Reset to default': 'إعادة إلى الافتراضي', 'Save branding': 'حفظ الهوية', '{} palette': m => `لوحة ${m[1]}`,
@@ -61,7 +61,7 @@ const dict: Dict = {
     '{n} published reviews': m => `${cnt(m[1], 'تقييم منشور واحد', 'تقييمان منشوران', 'تقييمات منشورة', 'تقييمًا منشورًا')}`, '{} published review': () => 'تقييم منشور واحد',
     '{n} still open': m => `${m[1]} لا تزال مفتوحة`, 'Win rate {n}%.': m => `معدل الكسب ${ltr(m[1] + '%')}.`, '{n} QAR still open in the pipeline.': m => `${m[1]} ر.ق لا تزال مفتوحة في المسار.`,
     'Also {} finished jobs ({} QAR) not invoiced yet.': m => `أيضًا ${jobs(m[1])} منتهية (${m[2]} ر.ق) لم تُفوتر بعد.`, 'Also {} finished job ({} QAR) not invoiced yet.': m => `أيضًا مهمة منتهية واحدة (${m[2]} ر.ق) لم تُفوتر بعد.`,
-    '{n} reviews': m => `${m[1]} تقييم`, '{n} complaint': m => `${m[1]} شكوى`, '{n} new in period': m => `${m[1]} جديدة في الفترة`, '{n} of {} booked more than once': m => `${m[1]} من ${m[2]} حجزوا أكثر من مرة`,
+    '{n} reviews': m => `${m[1]} تقييم`, '{n} review': () => 'تقييم واحد', '{n} complaint': m => `${m[1]} شكوى`, '{n} new in period': m => `${m[1]} جديدة في الفترة`, '{n} of {} booked more than once': m => `${m[1]} من ${m[2]} حجزوا أكثر من مرة`,
     '{n} out of 5 stars': m => `${m[1]} من 5 نجوم`, '{n} answered': m => `${m[1]} أجابوا`, 'To approve ({})': m => `بانتظار الموافقة (${m[1]})`, '· with {}': m => `· مع ${m[1]}`,
 
     /* quality */

@@ -1,5 +1,5 @@
 import type { Dict } from '../../services/dashTranslate';
-import { cnt, jobs } from './util';
+import { cnt, hours, jobs } from './util';
 
 const rides = (n: string) => cnt(n, 'رحلة واحدة', 'رحلتان', 'رحلات', 'رحلة');
 
@@ -32,12 +32,15 @@ const dict: Dict = {
     'This overlaps another job for the same cleaner. Move anyway?': 'تتداخل هذه المهمة مع مهمة أخرى لعامل النظافة نفسه. هل تريد النقل على أي حال؟',
     'Could not upload that photo.': 'تعذر رفع تلك الصورة.', 'Job': 'المهمة', 'Reinstate': 'إعادة التفعيل', 'Cancel this job?': 'هل تريد إلغاء هذه المهمة؟', 'Reopen': 'إعادة الفتح',
     'Vehicle': 'المركبة', 'Start time': 'وقت البدء', 'Zone': 'المنطقة', 'Detected from the address when it matches a zone': 'يُحدد من العنوان عندما يطابق منطقة', 'No zone': 'بلا منطقة',
-    'Checklist ({})': m => `قائمة المهام (${m[1]})`, 'Remove task': 'إزالة المهمة', 'Add a task': 'إضافة مهمة', 'Job notes': 'ملاحظات المهمة',
+    'Checklist ({n} of {n})': m => `قائمة المهام (${m[1]} من ${m[2]})`, 'Checklist ({})': m => `قائمة المهام (${m[1]})`,
+    'Start job': 'بدء المهمة', 'Finish job': 'إنهاء المهمة', 'Cancel job': 'إلغاء المهمة',
+    '{} · {} QAR · {} hours': m => `${m[1]} · ${m[2]} ر.ق · ${hours(m[3])}`, '{} · {} QAR · {} hour': m => `${m[1]} · ${m[2]} ر.ق · ساعة واحدة`, 'Remove task': 'إزالة المهمة', 'Add a task': 'إضافة مهمة', 'Job notes': 'ملاحظات المهمة',
     'Access details, special requests, issues found': 'تفاصيل الدخول، طلبات خاصة، مشاكل لوحظت',
     'Before photos': 'صور قبل العمل', 'After photos': 'صور بعد العمل', 'Before': 'قبل', 'After': 'بعد',
     'Click to remove': 'انقر للإزالة', 'Remove this photo?': 'هل تريد إزالة هذه الصورة؟', 'Supplies used': 'المستلزمات المستخدمة', 'Supply': 'المستلزم',
     'Choose supply': 'اختر مستلزمًا', '({} left)': m => `(متبقٍ ${m[1]})`, 'Quantity': 'الكمية', 'Log usage': 'تسجيل الاستخدام', 'Office': 'المكتب',
-    '{n} jobs waiting': m => `${jobs(m[1])} بالانتظار`,
+    '{n} jobs waiting': m => `${jobs(m[1])} بالانتظار`, '{n} job waiting': m => `${jobs(m[1])} بالانتظار`,
+    '{n} job · {} hours booked': m => `${jobs(m[1])} · ${m[2]} ساعة محجوزة`,
     '{n} jobs · {} hours booked': m => `${jobs(m[1])} · ${m[2]} ساعة محجوزة`,
     '{} already has a job at {} that overlaps. Assign anyway?': m => `لدى ${m[1]} مهمة في الساعة ${m[2]} تتداخل مع هذه المهمة. هل تريد التعيين على أي حال؟`,
     'Assigned {}': m => `تم تعيين ${m[1]}`,
